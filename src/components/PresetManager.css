@@ -1,0 +1,38 @@
+.preset-manager {
+  width: 100%;
+}
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preset-btn {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preset-btn:hover {
+  background: #f3f4f6;
+  border-color: #6366f1;
+}
+
+.preset-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+.preset-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
