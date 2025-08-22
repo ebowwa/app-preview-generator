@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PreviewCanvas from './components/PreviewCanvas';
 import ConfigPanel from './components/ConfigPanel';
+import ElementEditor from './components/ElementEditor';
 import ScreenshotUploader from './components/ScreenshotUploader';
 import PresetManager from './components/PresetManager';
 import { PreviewProvider } from './context/PreviewContext';
@@ -29,6 +30,7 @@ function App() {
             
             <div className="right-panel">
               <ConfigPanel />
+              <ElementEditor />
             </div>
           </div>
         </div>

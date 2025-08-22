@@ -13,9 +13,6 @@ export const usePreview = () => {
 export const PreviewProvider = ({ children }) => {
   const [screenshots, setScreenshots] = useState([]);
   const [currentScreenshot, setCurrentScreenshot] = useState(0);
-  const [elements, setElements] = useState([
-    { id: 'screenshot', type: 'screenshot', x: 0.5, y: 0.5, width: 0.7, height: 0.4 }
-  ]);
   const [config, setConfig] = useState({
     appName: 'Your App',
     headline: 'Amazing Features',
@@ -30,6 +27,18 @@ export const PreviewProvider = ({ children }) => {
     },
     platform: 'ios-6.7'
   });
+  
+  // Elements are now derived from config
+  const [elements, setElements] = useState([
+    { id: 'app-name', type: 'text', x: 0.5, y: 0.08, size: 0.04, bold: true, align: 'center' },
+    { id: 'headline', type: 'text', x: 0.5, y: 0.14, size: 0.045, bold: true, align: 'center' },
+    { id: 'subheadline', type: 'text', x: 0.5, y: 0.20, size: 0.026, align: 'center' },
+    { id: 'screenshot', type: 'screenshot', x: 0.5, y: 0.5, width: 0.7, height: 0.4 },
+    { id: 'benefit-1', type: 'text', x: 0.5, y: 0.74, size: 0.022, align: 'center' },
+    { id: 'benefit-2', type: 'text', x: 0.5, y: 0.78, size: 0.022, align: 'center' },
+    { id: 'benefit-3', type: 'text', x: 0.5, y: 0.82, size: 0.022, align: 'center' },
+    { id: 'cta', type: 'button', x: 0.5, y: 0.92, width: 0.6, height: 0.055 }
+  ]);
 
   const platforms = {
     'ios-6.7': { width: 1320, height: 2868, label: 'iPhone 6.7" (15 Pro Max)' },
