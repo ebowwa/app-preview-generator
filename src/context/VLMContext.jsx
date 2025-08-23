@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { usePreview } from './PreviewContext';
 
-const ClaudeContext = createContext();
+const VLMContext = createContext();
 
-export const useClaude = () => {
-  const context = useContext(ClaudeContext);
+export const useVLM = () => {
+  const context = useContext(VLMContext);
   if (!context) {
-    throw new Error('useClaude must be used within ClaudeProvider');
+    throw new Error('useVLM must be used within VLMProvider');
   }
   return context;
 };
 
-export const ClaudeProvider = ({ children }) => {
+// Renamed from ClaudeProvider to VLMProvider (Vision Language Model)
+export const VLMProvider = ({ children }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [apiConnected, setApiConnected] = useState(false);
   const { updateConfig, updateElement, elements } = usePreview();
@@ -35,7 +36,7 @@ export const ClaudeProvider = ({ children }) => {
       
       return analysis;
     } catch (error) {
-      console.error('Claude analysis failed:', error);
+      console.error('VLM analysis failed:', error);
       setApiConnected(false);
       return null;
     } finally {
@@ -86,8 +87,8 @@ export const ClaudeProvider = ({ children }) => {
   };
 
   return (
-    <ClaudeContext.Provider value={value}>
+    <VLMContext.Provider value={value}>
       {children}
-    </ClaudeContext.Provider>
+    </VLMContext.Provider>
   );
 };

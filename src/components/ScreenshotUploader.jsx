@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { usePreview } from '../context/PreviewContext';
-import { useClaude } from '../context/ClaudeContext';
+import { useVLM } from '../context/VLMContext';
 import './ScreenshotUploader.css';
 
 const ScreenshotUploader = () => {
@@ -12,14 +12,14 @@ const ScreenshotUploader = () => {
     addScreenshot, 
     removeScreenshot 
   } = usePreview();
-  const { analyzeScreenshot, isAnalyzing } = useClaude();
+  const { analyzeScreenshot, isAnalyzing } = useVLM();
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
       addScreenshot(file);
       
-      // Analyze with Claude if available
+      // Analyze with VLM if available
       const reader = new FileReader();
       reader.onload = async (event) => {
         await analyzeScreenshot(event.target.result);

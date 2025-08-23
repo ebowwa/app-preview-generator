@@ -5,13 +5,13 @@ import ElementEditor from './components/ElementEditor';
 import ScreenshotUploader from './components/ScreenshotUploader';
 import PresetManager from './components/PresetManager';
 import { PreviewProvider } from './context/PreviewContext';
-import { ClaudeProvider } from './context/ClaudeContext';
+import { VLMProvider } from './context/VLMContext';
 import './App.css';
 
 function App() {
   return (
     <PreviewProvider>
-      <ClaudeProvider>
+      <VLMProvider>
         <div className="app">
           <header className="app-header">
             <h1>App Store Preview Generator</h1>
@@ -34,7 +34,7 @@ function App() {
             </div>
           </div>
         </div>
-      </ClaudeProvider>
+      </VLMProvider>
     </PreviewProvider>
   );
 }
