@@ -17,16 +17,20 @@ export const VLMProvider = ({ children }) => {
   const [apiConnected, setApiConnected] = useState(false);
   const { updateConfig, updateElement, elements } = usePreview();
 
-  const analyzeScreenshot = useCallback(async (imageDataUrl) => {
+  const analyzeScreenshot = useCallback(async (imageDataUrl, context = '') => {
     setIsAnalyzing(true);
     try {
       const response = await fetch('http://localhost:3000/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageDataUrl })
+        body: JSON.stringify({ image: imageDataUrl, context })
       });
       
-      if (!response.ok) throw new Error('API request failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API request failed: ${response.status} - ${errorText}`);
+      }
       
       const analysis = await response.json();
       setApiConnected(true);
@@ -37,7 +41,9 @@ export const VLMProvider = ({ children }) => {
       return analysis;
     } catch (error) {
       console.error('VLM analysis failed:', error);
+      console.error('Error details:', error.message);
       setApiConnected(false);
+      alert(`Analysis failed: ${error.message}`);
       return null;
     } finally {
       setIsAnalyzing(false);

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "api": "node src/api/server.js"
+    "api": "node src/api/server.js",
+    "api:clean": "node src/api/clean-server.js",
+    "api:mcp": "node src/api/mcp-bridge.js"
   },
   "dependencies": {
     "express": "^4.18.2",
