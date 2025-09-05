@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Store Screenshot Generator - Advanced</title>
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 App Store Screenshot Generator</h1>
+            <p>Upload, position, and customize your app screenshots with precision</p>
+        </div>
+
+        <div class="screen-manager">
+            <div class="screen-tabs">
+                <button class="screen-tab active" data-screen="0">
+                    Screen 1
+                    <span class="delete-btn" onclick="deleteScreen(0, event)">×</span>
+                </button>
+                <button class="add-screen-btn" onclick="addNewScreen()">+ Add Screen</button>
+            </div>
+
+            <div class="controls">
+                <div class="control-section">
+                    <h3>📸 Upload Screenshot</h3>
+                    <div class="screenshot-upload-area" id="uploadArea" onclick="document.getElementById('screenshotInput').click()">
+                        <input type="file" id="screenshotInput" accept="image/*" onchange="handleScreenshotUpload(event)">
+                        <button class="remove-screenshot" onclick="removeScreenshot(event)">×</button>
+                        <img class="screenshot-preview" id="screenshotPreview" style="display: none;">
+                        <div class="upload-placeholder" id="uploadPlaceholder">
+                            <div class="icon">📱</div>
+                            <p>Click to upload your app screenshot</p>
+                            <span>PNG, JPG, or JPEG (recommended: 1290x2796 for iPhone)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🎯 Position & Scale</h3>
+                    <div class="position-controls">
+                        <div class="position-control">
+                            <label>Scale</label>
+                            <input type="range" id="scaleControl" min="50" max="200" value="100" oninput="updateScale(this.value)">
+                            <div class="position-value" id="scaleValue">100%</div>
+                        </div>
+                        <div class="position-control">
+                            <label>X Position</label>
+                            <input type="range" id="xControl" min="-50" max="50" value="0" oninput="updatePosition('x', this.value)">
+                            <div class="position-value" id="xValue">0%</div>
+                        </div>
+                        <div class="position-control">
+                            <label>Y Position</label>
+                            <input type="range" id="yControl" min="-50" max="50" value="0" oninput="updatePosition('y', this.value)">
+                            <div class="position-value" id="yValue">0%</div>
+                        </div>
+                        <div class="position-control">
+                            <label>Rotation</label>
+                            <input type="range" id="rotateControl" min="-45" max="45" value="0" oninput="updateRotation(this.value)">
+                            <div class="position-value" id="rotateValue">0°</div>
+                        </div>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" onclick="fitToFrame()">📐 Fit to Frame</button>
+                        <button class="control-btn" onclick="fillFrame()">🖼️ Fill Frame</button>
+                        <button class="control-btn" onclick="resetPosition()">🔄 Reset Position</button>
+                        <button class="control-btn" onclick="centerImage()">🎯 Center</button>
+                        <button class="control-btn" id="gridToggle" onclick="toggleGrid()">⚡ Toggle Grid</button>
+                        <button class="control-btn" id="snapToggle" onclick="toggleSnap()">🧲 Snap to Grid</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>✏️ Overlay Text</h3>
+                    <div class="input-grid">
+                        <div class="input-field">
+                            <label>Title (Optional)</label>
+                            <input type="text" id="overlayTitle" placeholder="e.g., CHAT, DISCOVER, SHARE">
+                        </div>
+                        <div class="input-field">
+                            <label>Subtitle (Optional)</label>
+                            <input type="text" id="overlaySubtitle" placeholder="e.g., Stay in touch wherever you are">
+                        </div>
+                        <div class="input-field">
+                            <label>Description (Optional)</label>
+                            <textarea id="overlayDescription" rows="2" placeholder="Brief description of this feature"></textarea>
+                        </div>
+                        <div class="input-field">
+                            <label>Text Position</label>
+                            <div class="text-position-controls">
+                                <button class="position-btn active" data-position="top">Top</button>
+                                <button class="position-btn" data-position="center">Center</button>
+                                <button class="position-btn" data-position="bottom">Bottom</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🎨 Overlay Style</h3>
+                    <div class="template-selector">
+                        <div class="template-option">
+                            <input type="radio" name="overlay" id="overlay-none" value="none" checked>
+                            <label for="overlay-none">No Overlay</label>
+                        </div>
+                        <div class="template-option">
+                            <input type="radio" name="overlay" id="overlay-gradient" value="gradient">
+                            <label for="overlay-gradient">Gradient</label>
+                        </div>
+                        <div class="template-option">
+                            <input type="radio" name="overlay" id="overlay-minimal" value="minimal">
+                            <label for="overlay-minimal">Light</label>
+                        </div>
+                        <div class="template-option">
+                            <input type="radio" name="overlay" id="overlay-bold" value="bold">
+                            <label for="overlay-bold">Bold</label>
+                        </div>
+                        <div class="template-option">
+                            <input type="radio" name="overlay" id="overlay-dark" value="dark">
+                            <label for="overlay-dark">Dark</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🌍 Language</h3>
+                    <div class="language-selector">
+                        <button class="lang-btn active" data-lang="en">English</button>
+                        <button class="lang-btn" data-lang="es">Español</button>
+                        <button class="lang-btn" data-lang="fr">Français</button>
+                        <button class="lang-btn" data-lang="de">Deutsch</button>
+                        <button class="lang-btn" data-lang="it">Italiano</button>
+                        <button class="lang-btn" data-lang="pt">Português</button>
+                        <button class="lang-btn" data-lang="ja">日本語</button>
+                        <button class="lang-btn" data-lang="ko">한국어</button>
+                        <button class="lang-btn" data-lang="zh">中文</button>
+                        <button class="lang-btn" data-lang="ar">العربية</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🎨 Custom Colors (for gradient overlay)</h3>
+                    <div class="input-grid">
+                        <div class="input-field">
+                            <label>Primary Color</label>
+                            <div class="color-picker">
+                                <input type="color" class="color-input" id="primaryColor" value="#667eea">
+                                <input type="text" class="hex-input" id="primaryHex" value="#667eea">
+                            </div>
+                        </div>
+                        <div class="input-field">
+                            <label>Secondary Color</label>
+                            <div class="color-picker">
+                                <input type="color" class="color-input" id="secondaryColor" value="#764ba2">
+                                <input type="text" class="hex-input" id="secondaryHex" value="#764ba2">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-container">
+            <div class="preview-header">
+                <h2>📱 Live Preview</h2>
+                <div class="device-selector">
+                    <button class="device-btn active" data-device="iphone">iPhone</button>
+                    <button class="device-btn" data-device="android">Android</button>
+                    <button class="device-btn" data-device="ipad">iPad</button>
+                </div>
+            </div>
+            <div class="screens-carousel" id="screensCarousel">
+                <!-- Screens will be dynamically added here -->
+            </div>
+        </div>
+
+        <div class="export-section">
+            <h2>💾 Export Your Screenshots</h2>
+            <p style="margin-top: 10px; color: #666;">Download App Store ready screenshots</p>
+            <div class="export-options">
+                <button class="export-btn" onclick="exportCurrentScreen()">📸 Export Current</button>
+                <button class="export-btn" onclick="exportAllScreens()">📦 Export All Screens</button>
+                <button class="export-btn" onclick="exportForAllLanguages()">🌍 All Languages</button>
+                <button class="export-btn" onclick="saveProject()">💼 Save Project</button>
+                <button class="export-btn" onclick="document.getElementById('loadProjectInput').click()">📂 Load Project</button>
+            </div>
+            <input type="file" id="loadProjectInput" accept=".json" style="display: none;" onchange="loadProject(event)">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="src/app.js"></script>
+</body>
+</html>
