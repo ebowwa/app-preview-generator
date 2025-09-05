@@ -416,34 +416,55 @@
             border-radius: 40px;
             padding: 10px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            /* Scale down for preview - actual export will be at full size */
+            transform: scale(0.3);
+            transform-origin: top left;
+            margin-right: -70%;
+            margin-bottom: -70%;
         }
 
-        .phone-frame.iphone {
-            width: 430px;
-            height: 932px;
+        /* iPhone 6.9" Display */
+        .phone-frame.iphone-69 {
+            width: 1320px;
+            height: 2868px;
         }
         
-        .phone-frame.iphone-small {
-            width: 393px;
-            height: 852px;
-        }
-
-        .phone-frame.android {
-            width: 430px;
-            height: 932px;
-            border-radius: 30px;
-        }
-
-        .phone-frame.ipad {
-            width: 744px;
-            height: 1133px;
-            border-radius: 20px;
+        .phone-frame.iphone-69-landscape {
+            width: 2868px;
+            height: 1320px;
         }
         
-        .phone-frame.ipad-landscape {
-            width: 1133px;
-            height: 744px;
-            border-radius: 20px;
+        /* iPhone 6.7" Display */
+        .phone-frame.iphone-67 {
+            width: 1290px;
+            height: 2796px;
+        }
+        
+        .phone-frame.iphone-67-landscape {
+            width: 2796px;
+            height: 1290px;
+        }
+        
+        /* iPhone 6.5" Display */
+        .phone-frame.iphone-65 {
+            width: 1179px;
+            height: 2556px;
+        }
+        
+        .phone-frame.iphone-65-landscape {
+            width: 2556px;
+            height: 1179px;
+        }
+        
+        /* iPhone 6.1" Display */
+        .phone-frame.iphone-61 {
+            width: 1284px;
+            height: 2778px;
+        }
+        
+        .phone-frame.iphone-61-landscape {
+            width: 2778px;
+            height: 1284px;
         }
 
         .screen-content {

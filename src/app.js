@@ -22,7 +22,7 @@ let screens = [
 ];
 
 let currentScreen = 0;
-let currentDevice = 'iphone';
+let currentDevice = 'iphone-69';
 let currentLang = 'en';
 let showGrid = false;
 let snapToGrid = false;
@@ -124,33 +124,11 @@ function handleScreenshotUpload(event) {
         reader.onload = function(e) {
             const img = new Image();
             img.onload = function() {
-                // Check dimensions
-                const validDimensions = [
-                    {width: 1320, height: 2868}, // iPhone 6.9" Display
-                    {width: 2868, height: 1320}, // iPhone 6.9" Display (landscape)
-                    {width: 1290, height: 2796}, // iPhone 6.7" Display  
-                    {width: 2796, height: 1290}, // iPhone 6.7" Display (landscape)
-                    {width: 1179, height: 2556}, // iPhone 6.5" Display
-                    {width: 2556, height: 1179}, // iPhone 6.5" Display (landscape)
-                    {width: 1284, height: 2778}, // iPhone 6.1" Display
-                    {width: 2778, height: 1284}  // iPhone 6.1" Display (landscape)
-                ];
-                
-                const isValidDimension = validDimensions.some(dim => 
-                    (img.width === dim.width && img.height === dim.height)
-                );
-                
-                // Update dimension indicator
+                // Store dimensions for display
                 const dimensionIndicator = document.getElementById('dimensionIndicator');
                 if (dimensionIndicator) {
-                    if (isValidDimension) {
-                        dimensionIndicator.className = 'dimension-indicator valid';
-                        dimensionIndicator.textContent = `✓ ${img.width}×${img.height}px - App Store Ready`;
-                    } else {
-                        dimensionIndicator.className = 'dimension-indicator invalid';
-                        dimensionIndicator.textContent = `⚠ ${img.width}×${img.height}px - Invalid for App Store`;
-                        alert(`Warning: Screenshot dimensions (${img.width}×${img.height}px) don't match App Store requirements.\n\nRequired dimensions:\n• 1320×2868px or 2868×1320px (6.9" display)\n• 1290×2796px or 2796×1290px (6.7" display)\n• 1284×2778px or 2778×1284px (6.1" display)\n• 1179×2556px or 2556×1179px (6.5" display)\n\nThe image will still be loaded but may not be accepted by App Store.`);
-                    }
+                    dimensionIndicator.className = 'dimension-indicator valid';
+                    dimensionIndicator.textContent = `📐 ${img.width}×${img.height}px uploaded`;
                 }
                 
                 screens[currentScreen].screenshot = e.target.result;
@@ -158,7 +136,6 @@ function handleScreenshotUpload(event) {
                     width: img.width,
                     height: img.height
                 };
-                screens[currentScreen].isValidDimension = isValidDimension;
                 screens[currentScreen].layerOrder = 'front'; // Set screenshot to front by default
                 document.getElementById('screenshotPreview').src = e.target.result;
                 document.getElementById('screenshotPreview').style.display = 'block';
@@ -644,32 +621,111 @@ function hexToRgb(hex) {
 }
 
 async function exportCurrentScreen() {
-    const screen = screens[currentScreen];
-    if (!screen.originalDimensions) {
-        alert('Please upload a screenshot first');
-        return;
-    }
+    // Get the device dimensions based on current device selection
+    const deviceDimensions = {
+        'iphone-69': { width: 1320, height: 2868 },
+        'iphone-69-landscape': { width: 2868, height: 1320 },
+        'iphone-67': { width: 1290, height: 2796 },
+        'iphone-67-landscape': { width: 2796, height: 1290 },
+        'iphone-65': { width: 1179, height: 2556 },
+        'iphone-65-landscape': { width: 2556, height: 1179 },
+        'iphone-61': { width: 1284, height: 2778 },
+        'iphone-61-landscape': { width: 2778, height: 1284 }
+    };
+    
+    const dimensions = deviceDimensions[currentDevice] || deviceDimensions['iphone-69'];
     
     // Create a temporary container with exact App Store dimensions
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'fixed';
     tempContainer.style.left = '-9999px';
-    tempContainer.style.width = screen.originalDimensions.width + 'px';
-    tempContainer.style.height = screen.originalDimensions.height + 'px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = dimensions.width + 'px';
+    tempContainer.style.height = dimensions.height + 'px';
     document.body.appendChild(tempContainer);
     
-    // Clone the current screen content at original dimensions
-    const frames = document.querySelectorAll('.phone-frame');
-    if (frames[currentScreen]) {
-        const clonedFrame = frames[currentScreen].cloneNode(true);
-        // Set to original screenshot dimensions
-        clonedFrame.style.width = screen.originalDimensions.width + 'px';
-        clonedFrame.style.height = screen.originalDimensions.height + 'px';
-        tempContainer.appendChild(clonedFrame);
+    // Create the frame at full App Store dimensions
+    const frameDiv = document.createElement('div');
+    frameDiv.className = `phone-frame ${currentDevice}`;
+    frameDiv.style.transform = 'none'; // Remove the scale transform for export
+    frameDiv.style.margin = '0';
+    frameDiv.style.width = dimensions.width + 'px';
+    frameDiv.style.height = dimensions.height + 'px';
+    frameDiv.innerHTML = `
+        <div class="screen-content">
+            ${getScreenContent(screens[currentScreen], currentScreen)}
+        </div>
+    `;
+    tempContainer.appendChild(frameDiv);
+    
+    // Render at exact App Store dimensions
+    const canvas = await html2canvas(frameDiv, {
+        width: dimensions.width,
+        height: dimensions.height,
+        scale: 1,
+        backgroundColor: null,
+        useCORS: true,
+        allowTaint: true
+    });
+    
+    // Clean up
+    document.body.removeChild(tempContainer);
+    
+    canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `appstore-${dimensions.width}x${dimensions.height}-screen-${currentScreen + 1}-${currentLang}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+async function exportAllScreens() {
+    const deviceDimensions = {
+        'iphone-69': { width: 1320, height: 2868 },
+        'iphone-69-landscape': { width: 2868, height: 1320 },
+        'iphone-67': { width: 1290, height: 2796 },
+        'iphone-67-landscape': { width: 2796, height: 1290 },
+        'iphone-65': { width: 1179, height: 2556 },
+        'iphone-65-landscape': { width: 2556, height: 1179 },
+        'iphone-61': { width: 1284, height: 2778 },
+        'iphone-61-landscape': { width: 2778, height: 1284 }
+    };
+    
+    const dimensions = deviceDimensions[currentDevice] || deviceDimensions['iphone-69'];
+    
+    for (let i = 0; i < screens.length; i++) {
+        // Store current screen to restore later
+        const originalScreen = currentScreen;
+        currentScreen = i; // Temporarily switch to this screen for export
         
-        const canvas = await html2canvas(clonedFrame, {
-            width: screen.originalDimensions.width,
-            height: screen.originalDimensions.height,
+        // Create a temporary container
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'fixed';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '0';
+        tempContainer.style.width = dimensions.width + 'px';
+        tempContainer.style.height = dimensions.height + 'px';
+        document.body.appendChild(tempContainer);
+        
+        // Create the frame at full App Store dimensions
+        const frameDiv = document.createElement('div');
+        frameDiv.className = `phone-frame ${currentDevice}`;
+        frameDiv.style.transform = 'none';
+        frameDiv.style.margin = '0';
+        frameDiv.style.width = dimensions.width + 'px';
+        frameDiv.style.height = dimensions.height + 'px';
+        frameDiv.innerHTML = `
+            <div class="screen-content">
+                ${getScreenContent(screens[i], i)}
+            </div>
+        `;
+        tempContainer.appendChild(frameDiv);
+        
+        const canvas = await html2canvas(frameDiv, {
+            width: dimensions.width,
+            height: dimensions.height,
             scale: 1,
             backgroundColor: null,
             useCORS: true,
@@ -683,31 +739,13 @@ async function exportCurrentScreen() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `appstore-${screen.originalDimensions.width}x${screen.originalDimensions.height}-screen-${currentScreen + 1}-${currentLang}.png`;
+            a.download = `appstore-${dimensions.width}x${dimensions.height}-screen-${i + 1}-${currentLang}.png`;
             a.click();
             URL.revokeObjectURL(url);
-        });
-    }
-}
-
-async function exportAllScreens() {
-    for (let i = 0; i < screens.length; i++) {
-        const frames = document.querySelectorAll('.phone-frame');
-        const canvas = await html2canvas(frames[i], {
-            scale: 2,
-            backgroundColor: null,
-            useCORS: true,
-            allowTaint: true
         });
         
-        canvas.toBlob(function(blob) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${currentDevice}-screen-${i + 1}-${currentLang}.png`;
-            a.click();
-            URL.revokeObjectURL(url);
-        });
+        // Restore original screen
+        currentScreen = originalScreen;
         
         await new Promise(resolve => setTimeout(resolve, 500));
     }
