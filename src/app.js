@@ -644,18 +644,13 @@ async function exportCurrentScreen() {
     tempContainer.style.height = dimensions.height + 'px';
     document.body.appendChild(tempContainer);
     
-    // Create the frame at full App Store dimensions
+    // Create the frame at full App Store dimensions WITHOUT the phone frame styling
     const frameDiv = document.createElement('div');
-    frameDiv.className = `phone-frame ${currentDevice}`;
-    frameDiv.style.transform = 'none'; // Remove the scale transform for export
-    frameDiv.style.margin = '0';
     frameDiv.style.width = dimensions.width + 'px';
     frameDiv.style.height = dimensions.height + 'px';
-    frameDiv.innerHTML = `
-        <div class="screen-content">
-            ${getScreenContent(screens[currentScreen], currentScreen)}
-        </div>
-    `;
+    frameDiv.style.position = 'relative';
+    frameDiv.style.overflow = 'hidden';
+    frameDiv.innerHTML = getScreenContent(screens[currentScreen], currentScreen);
     tempContainer.appendChild(frameDiv);
     
     // Render at exact App Store dimensions
@@ -709,18 +704,13 @@ async function exportAllScreens() {
         tempContainer.style.height = dimensions.height + 'px';
         document.body.appendChild(tempContainer);
         
-        // Create the frame at full App Store dimensions
+        // Create the frame at full App Store dimensions WITHOUT the phone frame styling
         const frameDiv = document.createElement('div');
-        frameDiv.className = `phone-frame ${currentDevice}`;
-        frameDiv.style.transform = 'none';
-        frameDiv.style.margin = '0';
         frameDiv.style.width = dimensions.width + 'px';
         frameDiv.style.height = dimensions.height + 'px';
-        frameDiv.innerHTML = `
-            <div class="screen-content">
-                ${getScreenContent(screens[i], i)}
-            </div>
-        `;
+        frameDiv.style.position = 'relative';
+        frameDiv.style.overflow = 'hidden';
+        frameDiv.innerHTML = getScreenContent(screens[i], i);
         tempContainer.appendChild(frameDiv);
         
         const canvas = await html2canvas(frameDiv, {
