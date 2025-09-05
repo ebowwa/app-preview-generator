@@ -892,9 +892,19 @@ function setupEventListeners() {
         document.getElementById('primaryHex').value = this.value;
         updatePreview();
     });
+    
+    document.getElementById('primaryHex').addEventListener('input', function() {
+        document.getElementById('primaryColor').value = this.value;
+        updatePreview();
+    });
 
     document.getElementById('secondaryColor').addEventListener('input', function() {
         document.getElementById('secondaryHex').value = this.value;
+        updatePreview();
+    });
+    
+    document.getElementById('secondaryHex').addEventListener('input', function() {
+        document.getElementById('secondaryColor').value = this.value;
         updatePreview();
     });
 
