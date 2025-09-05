@@ -122,20 +122,58 @@ function handleScreenshotUpload(event) {
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            screens[currentScreen].screenshot = e.target.result;
-            screens[currentScreen].layerOrder = 'front'; // Set screenshot to front by default
-            document.getElementById('screenshotPreview').src = e.target.result;
-            document.getElementById('screenshotPreview').style.display = 'block';
-            document.getElementById('uploadPlaceholder').style.display = 'none';
-            document.getElementById('uploadArea').classList.add('has-image');
-            
-            // Update layer button states (with null checks)
-            const layerFront = document.getElementById('layerFront');
-            const layerBack = document.getElementById('layerBack');
-            if (layerFront) layerFront.classList.add('active');
-            if (layerBack) layerBack.classList.remove('active');
-            
-            updatePreview();
+            const img = new Image();
+            img.onload = function() {
+                // Check dimensions
+                const validDimensions = [
+                    {width: 1320, height: 2868}, // iPhone 6.9" Display
+                    {width: 2868, height: 1320}, // iPhone 6.9" Display (landscape)
+                    {width: 1290, height: 2796}, // iPhone 6.7" Display  
+                    {width: 2796, height: 1290}, // iPhone 6.7" Display (landscape)
+                    {width: 1179, height: 2556}, // iPhone 6.5" Display
+                    {width: 2556, height: 1179}, // iPhone 6.5" Display (landscape)
+                    {width: 1284, height: 2778}, // iPhone 6.1" Display
+                    {width: 2778, height: 1284}  // iPhone 6.1" Display (landscape)
+                ];
+                
+                const isValidDimension = validDimensions.some(dim => 
+                    (img.width === dim.width && img.height === dim.height)
+                );
+                
+                // Update dimension indicator
+                const dimensionIndicator = document.getElementById('dimensionIndicator');
+                if (dimensionIndicator) {
+                    if (isValidDimension) {
+                        dimensionIndicator.className = 'dimension-indicator valid';
+                        dimensionIndicator.textContent = `✓ ${img.width}×${img.height}px - App Store Ready`;
+                    } else {
+                        dimensionIndicator.className = 'dimension-indicator invalid';
+                        dimensionIndicator.textContent = `⚠ ${img.width}×${img.height}px - Invalid for App Store`;
+                        alert(`Warning: Screenshot dimensions (${img.width}×${img.height}px) don't match App Store requirements.\n\nRequired dimensions:\n• 1320×2868px or 2868×1320px (6.9" display)\n• 1290×2796px or 2796×1290px (6.7" display)\n• 1284×2778px or 2778×1284px (6.1" display)\n• 1179×2556px or 2556×1179px (6.5" display)\n\nThe image will still be loaded but may not be accepted by App Store.`);
+                    }
+                }
+                
+                screens[currentScreen].screenshot = e.target.result;
+                screens[currentScreen].originalDimensions = {
+                    width: img.width,
+                    height: img.height
+                };
+                screens[currentScreen].isValidDimension = isValidDimension;
+                screens[currentScreen].layerOrder = 'front'; // Set screenshot to front by default
+                document.getElementById('screenshotPreview').src = e.target.result;
+                document.getElementById('screenshotPreview').style.display = 'block';
+                document.getElementById('uploadPlaceholder').style.display = 'none';
+                document.getElementById('uploadArea').classList.add('has-image');
+                
+                // Update layer button states (with null checks)
+                const layerFront = document.getElementById('layerFront');
+                const layerBack = document.getElementById('layerBack');
+                if (layerFront) layerFront.classList.add('active');
+                if (layerBack) layerBack.classList.remove('active');
+                
+                updatePreview();
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -144,6 +182,8 @@ function handleScreenshotUpload(event) {
 function removeScreenshot(event) {
     event.stopPropagation();
     screens[currentScreen].screenshot = null;
+    screens[currentScreen].originalDimensions = null;
+    screens[currentScreen].isValidDimension = null;
     screens[currentScreen].imagePosition = { x: 0, y: 0, scale: 100, rotation: 0 };
     screens[currentScreen].layerOrder = 'front'; // Reset to default
     screens[currentScreen].screenshotOpacity = 100;
@@ -152,6 +192,14 @@ function removeScreenshot(event) {
     document.getElementById('uploadPlaceholder').style.display = 'block';
     document.getElementById('uploadArea').classList.remove('has-image');
     document.getElementById('screenshotInput').value = '';
+    
+    // Clear dimension indicator
+    const dimensionIndicator = document.getElementById('dimensionIndicator');
+    if (dimensionIndicator) {
+        dimensionIndicator.className = 'dimension-indicator';
+        dimensionIndicator.textContent = '';
+    }
+    
     resetControls();
     updatePreview();
 }
@@ -596,20 +644,46 @@ function hexToRgb(hex) {
 }
 
 async function exportCurrentScreen() {
+    const screen = screens[currentScreen];
+    if (!screen.originalDimensions) {
+        alert('Please upload a screenshot first');
+        return;
+    }
+    
+    // Create a temporary container with exact App Store dimensions
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'fixed';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.width = screen.originalDimensions.width + 'px';
+    tempContainer.style.height = screen.originalDimensions.height + 'px';
+    document.body.appendChild(tempContainer);
+    
+    // Clone the current screen content at original dimensions
     const frames = document.querySelectorAll('.phone-frame');
     if (frames[currentScreen]) {
-        const canvas = await html2canvas(frames[currentScreen], {
-            scale: 2,
+        const clonedFrame = frames[currentScreen].cloneNode(true);
+        // Set to original screenshot dimensions
+        clonedFrame.style.width = screen.originalDimensions.width + 'px';
+        clonedFrame.style.height = screen.originalDimensions.height + 'px';
+        tempContainer.appendChild(clonedFrame);
+        
+        const canvas = await html2canvas(clonedFrame, {
+            width: screen.originalDimensions.width,
+            height: screen.originalDimensions.height,
+            scale: 1,
             backgroundColor: null,
             useCORS: true,
             allowTaint: true
         });
         
+        // Clean up
+        document.body.removeChild(tempContainer);
+        
         canvas.toBlob(function(blob) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${currentDevice}-screen-${currentScreen + 1}-${currentLang}.png`;
+            a.download = `appstore-${screen.originalDimensions.width}x${screen.originalDimensions.height}-screen-${currentScreen + 1}-${currentLang}.png`;
             a.click();
             URL.revokeObjectURL(url);
         });

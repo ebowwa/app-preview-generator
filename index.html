@@ -29,10 +29,11 @@
                         <input type="file" id="screenshotInput" accept="image/*" onchange="handleScreenshotUpload(event)">
                         <button class="remove-screenshot" onclick="removeScreenshot(event)">×</button>
                         <img class="screenshot-preview" id="screenshotPreview" style="display: none;">
+                        <div class="dimension-indicator" id="dimensionIndicator"></div>
                         <div class="upload-placeholder" id="uploadPlaceholder">
                             <div class="icon">📱</div>
                             <p>Click to upload your app screenshot</p>
-                            <span>PNG, JPG, or JPEG (recommended: 1290x2796 for iPhone)</span>
+                            <span>Required dimensions: 1320×2868px, 1290×2796px (portrait) or 2868×1320px, 2796×1290px (landscape)</span>
                         </div>
                     </div>
                 </div>
@@ -165,9 +166,10 @@
             <div class="preview-header">
                 <h2>📱 Live Preview</h2>
                 <div class="device-selector">
-                    <button class="device-btn active" data-device="iphone">iPhone</button>
-                    <button class="device-btn" data-device="android">Android</button>
-                    <button class="device-btn" data-device="ipad">iPad</button>
+                    <button class="device-btn active" data-device="iphone">iPhone 15 Pro Max (430×932)</button>
+                    <button class="device-btn" data-device="iphone-small">iPhone 15 Pro (393×852)</button>
+                    <button class="device-btn" data-device="ipad">iPad Pro (744×1133)</button>
+                    <button class="device-btn" data-device="ipad-landscape">iPad Landscape (1133×744)</button>
                 </div>
             </div>
             <div class="screens-carousel" id="screensCarousel">

@@ -182,6 +182,29 @@
         .screenshot-upload-area.has-image .remove-screenshot {
             display: block;
         }
+        
+        .dimension-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            display: none;
+        }
+        
+        .dimension-indicator.valid {
+            background: #4CAF50;
+            color: white;
+            display: block;
+        }
+        
+        .dimension-indicator.invalid {
+            background: #ff4444;
+            color: white;
+            display: block;
+        }
 
         .position-controls {
             display: grid;
@@ -396,19 +419,30 @@
         }
 
         .phone-frame.iphone {
-            width: 320px;
-            height: 640px;
+            width: 430px;
+            height: 932px;
+        }
+        
+        .phone-frame.iphone-small {
+            width: 393px;
+            height: 852px;
         }
 
         .phone-frame.android {
-            width: 320px;
-            height: 640px;
+            width: 430px;
+            height: 932px;
             border-radius: 30px;
         }
 
         .phone-frame.ipad {
-            width: 480px;
-            height: 640px;
+            width: 744px;
+            height: 1133px;
+            border-radius: 20px;
+        }
+        
+        .phone-frame.ipad-landscape {
+            width: 1133px;
+            height: 744px;
             border-radius: 20px;
         }
 
