@@ -1,4 +1,34 @@
-// Screen data storage with position data
+const DEVICE_DIMENSIONS = {
+    'iphone-69': { width: 1320, height: 2868 },
+    'iphone-69-landscape': { width: 2868, height: 1320 },
+    'iphone-67': { width: 1290, height: 2796 },
+    'iphone-67-landscape': { width: 2796, height: 1290 },
+    'iphone-65': { width: 1179, height: 2556 },
+    'iphone-65-landscape': { width: 2556, height: 1179 },
+    'iphone-61': { width: 1284, height: 2778 },
+    'iphone-61-landscape': { width: 2778, height: 1284 },
+    'ipad-129': { width: 2048, height: 2732 },
+    'ipad-129-landscape': { width: 2732, height: 2048 },
+    'ipad-11': { width: 2064, height: 2752 },
+    'ipad-11-landscape': { width: 2752, height: 2064 }
+};
+
+const CONSTANTS = {
+    EXPORT_DELAY: 500,
+    LANGUAGE_SWITCH_DELAY: 100,
+    POSITION_LIMITS: { min: -50, max: 50 },
+    DEFAULT_SCALE: 100,
+    FILL_FRAME_SCALE: 120,
+    GRID_SNAP_SIZE: 10,
+    PREVIEW_SCALE: 0.3,
+    DRAG_SCALE_FACTOR: 3,
+    DEFAULT_COLORS: {
+        primary: '#667eea',
+        secondary: '#764ba2',
+        background: '#ffffff'
+    }
+};
+
 let screens = [
     {
         screenshot: null,
@@ -11,13 +41,13 @@ let screens = [
         imagePosition: {
             x: 0,
             y: 0,
-            scale: 100,
+            scale: CONSTANTS.DEFAULT_SCALE,
             rotation: 0
         },
-        layerOrder: 'front', // 'front' = screenshot on top, 'back' = text on top
-        screenshotOpacity: 100,
+        layerOrder: 'front',
+        screenshotOpacity: CONSTANTS.DEFAULT_SCALE,
         overlayOpacity: 90,
-        bgColor: '#ffffff'
+        bgColor: CONSTANTS.DEFAULT_COLORS.background
     }
 ];
 
@@ -30,8 +60,7 @@ let isDragging = false;
 let dragStart = { x: 0, y: 0 };
 let imageStart = { x: 0, y: 0 };
 
-// Translations
-const translations = {
+const TRANSLATIONS = {
     en: {
         chat: "CHAT",
         share: "SHARE",
@@ -66,7 +95,35 @@ const translations = {
     }
 };
 
-// Global functions for inline handlers
+function updateElementValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.value = value;
+}
+
+function updateElementText(id, text) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+}
+
+function toggleElementClass(id, className, condition) {
+    const element = document.getElementById(id);
+    if (element) {
+        if (condition) {
+            element.classList.add(className);
+        } else {
+            element.classList.remove(className);
+        }
+    }
+}
+
+function getTranslation(key, lang = currentLang) {
+    return TRANSLATIONS[lang] && TRANSLATIONS[lang][key] ? TRANSLATIONS[lang][key] : key;
+}
+
+function createDefaultImagePosition() {
+    return { x: 0, y: 0, scale: CONSTANTS.DEFAULT_SCALE, rotation: 0 };
+}
+
 function setLayerOrder(order) {
     if (!screens[currentScreen]) return;
     screens[currentScreen].layerOrder = order;
@@ -96,24 +153,21 @@ function updateOverlayOpacity(value) {
 function updateScale(value) {
     if (!screens[currentScreen]) return;
     screens[currentScreen].imagePosition.scale = value;
-    const scaleValue = document.getElementById('scaleValue');
-    if (scaleValue) scaleValue.textContent = value + '%';
+    updateElementText('scaleValue', value + '%');
     updatePreview();
 }
 
 function updatePosition(axis, value) {
     if (!screens[currentScreen]) return;
     screens[currentScreen].imagePosition[axis] = value;
-    const axisValue = document.getElementById(axis + 'Value');
-    if (axisValue) axisValue.textContent = value + '%';
+    updateElementText(axis + 'Value', value + '%');
     updatePreview();
 }
 
 function updateRotation(value) {
     if (!screens[currentScreen]) return;
     screens[currentScreen].imagePosition.rotation = value;
-    const rotateValue = document.getElementById('rotateValue');
-    if (rotateValue) rotateValue.textContent = value + '°';
+    updateElementText('rotateValue', value + '°');
     updatePreview();
 }
 
@@ -161,16 +215,15 @@ function removeScreenshot(event) {
     screens[currentScreen].screenshot = null;
     screens[currentScreen].originalDimensions = null;
     screens[currentScreen].isValidDimension = null;
-    screens[currentScreen].imagePosition = { x: 0, y: 0, scale: 100, rotation: 0 };
-    screens[currentScreen].layerOrder = 'front'; // Reset to default
-    screens[currentScreen].screenshotOpacity = 100;
+    screens[currentScreen].imagePosition = createDefaultImagePosition();
+    screens[currentScreen].layerOrder = 'front';
+    screens[currentScreen].screenshotOpacity = CONSTANTS.DEFAULT_SCALE;
     screens[currentScreen].overlayOpacity = 90;
     document.getElementById('screenshotPreview').style.display = 'none';
     document.getElementById('uploadPlaceholder').style.display = 'block';
     document.getElementById('uploadArea').classList.remove('has-image');
     document.getElementById('screenshotInput').value = '';
     
-    // Clear dimension indicator
     const dimensionIndicator = document.getElementById('dimensionIndicator');
     if (dimensionIndicator) {
         dimensionIndicator.className = 'dimension-indicator';
@@ -183,25 +236,23 @@ function removeScreenshot(event) {
 
 function fitToFrame() {
     if (!screens[currentScreen]) return;
-    screens[currentScreen].imagePosition = { x: 0, y: 0, scale: 100, rotation: 0 };
+    screens[currentScreen].imagePosition = createDefaultImagePosition();
     resetControls();
     updatePreview();
 }
 
 function fillFrame() {
     if (!screens[currentScreen]) return;
-    screens[currentScreen].imagePosition = { x: 0, y: 0, scale: 120, rotation: 0 };
-    const scaleControl = document.getElementById('scaleControl');
-    const scaleValue = document.getElementById('scaleValue');
-    if (scaleControl) scaleControl.value = 120;
-    if (scaleValue) scaleValue.textContent = '120%';
+    screens[currentScreen].imagePosition = { x: 0, y: 0, scale: CONSTANTS.FILL_FRAME_SCALE, rotation: 0 };
+    updateElementValue('scaleControl', CONSTANTS.FILL_FRAME_SCALE);
+    updateElementText('scaleValue', CONSTANTS.FILL_FRAME_SCALE + '%');
     resetControls();
     updatePreview();
 }
 
 function resetPosition() {
     if (!screens[currentScreen]) return;
-    screens[currentScreen].imagePosition = { x: 0, y: 0, scale: 100, rotation: 0 };
+    screens[currentScreen].imagePosition = createDefaultImagePosition();
     resetControls();
     updatePreview();
 }
@@ -210,28 +261,22 @@ function centerImage() {
     if (!screens[currentScreen]) return;
     screens[currentScreen].imagePosition.x = 0;
     screens[currentScreen].imagePosition.y = 0;
-    const xControl = document.getElementById('xControl');
-    const yControl = document.getElementById('yControl');
-    const xValue = document.getElementById('xValue');
-    const yValue = document.getElementById('yValue');
-    if (xControl) xControl.value = 0;
-    if (yControl) yControl.value = 0;
-    if (xValue) xValue.textContent = '0%';
-    if (yValue) yValue.textContent = '0%';
+    updateElementValue('xControl', 0);
+    updateElementValue('yControl', 0);
+    updateElementText('xValue', '0%');
+    updateElementText('yValue', '0%');
     updatePreview();
 }
 
 function toggleGrid() {
     showGrid = !showGrid;
-    const gridToggle = document.getElementById('gridToggle');
-    if (gridToggle) gridToggle.classList.toggle('active');
+    toggleElementClass('gridToggle', 'active', showGrid);
     updatePreview();
 }
 
 function toggleSnap() {
     snapToGrid = !snapToGrid;
-    const snapToggle = document.getElementById('snapToggle');
-    if (snapToggle) snapToggle.classList.toggle('active');
+    toggleElementClass('snapToggle', 'active', snapToGrid);
 }
 
 function resetControls() {
@@ -245,8 +290,7 @@ function resetControls() {
     };
     
     for (const [id, value] of Object.entries(controls)) {
-        const element = document.getElementById(id);
-        if (element) element.value = value;
+        updateElementValue(id, value);
     }
     
     const values = {
@@ -257,8 +301,7 @@ function resetControls() {
     };
     
     for (const [id, text] of Object.entries(values)) {
-        const element = document.getElementById(id);
-        if (element) element.textContent = text;
+        updateElementText(id, text);
     }
 }
 
@@ -271,11 +314,11 @@ function addNewScreen() {
         overlayStyle: 'none',
         textPosition: 'top',
         language: currentLang,
-        imagePosition: { x: 0, y: 0, scale: 100, rotation: 0 },
+        imagePosition: createDefaultImagePosition(),
         layerOrder: 'front',
-        screenshotOpacity: 100,
+        screenshotOpacity: CONSTANTS.DEFAULT_SCALE,
         overlayOpacity: 90,
-        bgColor: '#ffffff'
+        bgColor: CONSTANTS.DEFAULT_COLORS.background
     };
     screens.push(newScreen);
     currentScreen = screens.length - 1;
@@ -429,19 +472,19 @@ function setupDragAndDrop(container, screenIndex) {
 
     document.addEventListener('mousemove', function(e) {
         if (localDragging && screenIndex === currentScreen) {
-            const deltaX = (e.clientX - startPos.x) / 3;
-            const deltaY = (e.clientY - startPos.y) / 3;
+            const deltaX = (e.clientX - startPos.x) / CONSTANTS.DRAG_SCALE_FACTOR;
+            const deltaY = (e.clientY - startPos.y) / CONSTANTS.DRAG_SCALE_FACTOR;
             
             let newX = startImagePos.x + deltaX;
             let newY = startImagePos.y + deltaY;
             
             if (snapToGrid) {
-                newX = Math.round(newX / 10) * 10;
-                newY = Math.round(newY / 10) * 10;
+                newX = Math.round(newX / CONSTANTS.GRID_SNAP_SIZE) * CONSTANTS.GRID_SNAP_SIZE;
+                newY = Math.round(newY / CONSTANTS.GRID_SNAP_SIZE) * CONSTANTS.GRID_SNAP_SIZE;
             }
             
-            screens[screenIndex].imagePosition.x = Math.max(-50, Math.min(50, newX));
-            screens[screenIndex].imagePosition.y = Math.max(-50, Math.min(50, newY));
+            screens[screenIndex].imagePosition.x = Math.max(CONSTANTS.POSITION_LIMITS.min, Math.min(CONSTANTS.POSITION_LIMITS.max, newX));
+            screens[screenIndex].imagePosition.y = Math.max(CONSTANTS.POSITION_LIMITS.min, Math.min(CONSTANTS.POSITION_LIMITS.max, newY));
             
             document.getElementById('xControl').value = screens[screenIndex].imagePosition.x;
             document.getElementById('yControl').value = screens[screenIndex].imagePosition.y;
@@ -475,19 +518,19 @@ function setupDragAndDrop(container, screenIndex) {
 
     container.addEventListener('touchmove', function(e) {
         if (localDragging && screenIndex === currentScreen) {
-            const deltaX = (e.touches[0].clientX - startPos.x) / 3;
-            const deltaY = (e.touches[0].clientY - startPos.y) / 3;
+            const deltaX = (e.touches[0].clientX - startPos.x) / CONSTANTS.DRAG_SCALE_FACTOR;
+            const deltaY = (e.touches[0].clientY - startPos.y) / CONSTANTS.DRAG_SCALE_FACTOR;
             
             let newX = startImagePos.x + deltaX;
             let newY = startImagePos.y + deltaY;
             
             if (snapToGrid) {
-                newX = Math.round(newX / 10) * 10;
-                newY = Math.round(newY / 10) * 10;
+                newX = Math.round(newX / CONSTANTS.GRID_SNAP_SIZE) * CONSTANTS.GRID_SNAP_SIZE;
+                newY = Math.round(newY / CONSTANTS.GRID_SNAP_SIZE) * CONSTANTS.GRID_SNAP_SIZE;
             }
             
-            screens[screenIndex].imagePosition.x = Math.max(-50, Math.min(50, newX));
-            screens[screenIndex].imagePosition.y = Math.max(-50, Math.min(50, newY));
+            screens[screenIndex].imagePosition.x = Math.max(CONSTANTS.POSITION_LIMITS.min, Math.min(CONSTANTS.POSITION_LIMITS.max, newX));
+            screens[screenIndex].imagePosition.y = Math.max(CONSTANTS.POSITION_LIMITS.min, Math.min(CONSTANTS.POSITION_LIMITS.max, newY));
             
             document.getElementById('xControl').value = screens[screenIndex].imagePosition.x;
             document.getElementById('yControl').value = screens[screenIndex].imagePosition.y;
@@ -535,29 +578,28 @@ function updatePreview() {
 function getScreenContent(screen, index) {
     const primaryColorEl = document.getElementById('primaryColor');
     const secondaryColorEl = document.getElementById('secondaryColor');
-    const primaryColor = primaryColorEl ? primaryColorEl.value : '#667eea';
-    const secondaryColor = secondaryColorEl ? secondaryColorEl.value : '#764ba2';
+    const primaryColor = primaryColorEl ? primaryColorEl.value : CONSTANTS.DEFAULT_COLORS.primary;
+    const secondaryColor = secondaryColorEl ? secondaryColorEl.value : CONSTANTS.DEFAULT_COLORS.secondary;
     
-    // Ensure we have default values
-    const bgColorValue = screen.bgColor || '#ffffff';
-    const screenshotOpacityValue = (screen.screenshotOpacity !== undefined ? screen.screenshotOpacity : 100) / 100;
-    const overlayOpacityValue = (screen.overlayOpacity !== undefined ? screen.overlayOpacity : 90) / 100;
+    const bgColorValue = screen.bgColor || CONSTANTS.DEFAULT_COLORS.background;
+    const screenshotOpacityValue = (screen.screenshotOpacity !== undefined ? screen.screenshotOpacity : CONSTANTS.DEFAULT_SCALE) / CONSTANTS.DEFAULT_SCALE;
+    const overlayOpacityValue = (screen.overlayOpacity !== undefined ? screen.overlayOpacity : 90) / CONSTANTS.DEFAULT_SCALE;
     const layerOrderValue = screen.layerOrder || 'front';
     
     if (!screen.screenshot) {
         return `
-            <div class="screenshot-container" style="background: ${bgColorValue}; display: flex; align-items: center; justify-content: center;">
-                <div style="text-align: center; color: #999;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">📱</div>
-                    <div>No screenshot uploaded</div>
+            <div class="screenshot-container no-screenshot" style="background: ${bgColorValue};">
+                <div class="upload-placeholder-content">
+                    <div class="placeholder-icon">📱</div>
+                    <div class="placeholder-text">No screenshot uploaded</div>
                 </div>
             </div>
         `;
     }
     
-    const pos = screen.imagePosition || { x: 0, y: 0, scale: 100, rotation: 0 };
+    const pos = screen.imagePosition || createDefaultImagePosition();
     const imgStyle = `
-        transform: translate(${pos.x}%, ${pos.y}%) scale(${pos.scale / 100}) rotate(${pos.rotation}deg);
+        transform: translate(${pos.x}%, ${pos.y}%) scale(${pos.scale / CONSTANTS.DEFAULT_SCALE}) rotate(${pos.rotation}deg);
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -620,90 +662,8 @@ function hexToRgb(hex) {
     ] : [0, 0, 0];
 }
 
-async function exportCurrentScreen() {
-    // Get the device dimensions based on current device selection
-    const deviceDimensions = {
-        'iphone-69': { width: 1320, height: 2868 },
-        'iphone-69-landscape': { width: 2868, height: 1320 },
-        'iphone-67': { width: 1290, height: 2796 },
-        'iphone-67-landscape': { width: 2796, height: 1290 },
-        'iphone-65': { width: 1179, height: 2556 },
-        'iphone-65-landscape': { width: 2556, height: 1179 },
-        'iphone-61': { width: 1284, height: 2778 },
-        'iphone-61-landscape': { width: 2778, height: 1284 },
-        'ipad-129': { width: 2048, height: 2732 },
-        'ipad-129-landscape': { width: 2732, height: 2048 },
-        'ipad-11': { width: 2064, height: 2752 },
-        'ipad-11-landscape': { width: 2752, height: 2064 }
-    };
-    
-    const dimensions = deviceDimensions[currentDevice] || deviceDimensions['iphone-69'];
-    
-    // Create a temporary container with exact App Store dimensions
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'fixed';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '0';
-    tempContainer.style.width = dimensions.width + 'px';
-    tempContainer.style.height = dimensions.height + 'px';
-    document.body.appendChild(tempContainer);
-    
-    // Create the frame at full App Store dimensions WITHOUT the phone frame styling
-    const frameDiv = document.createElement('div');
-    frameDiv.style.width = dimensions.width + 'px';
-    frameDiv.style.height = dimensions.height + 'px';
-    frameDiv.style.position = 'relative';
-    frameDiv.style.overflow = 'hidden';
-    frameDiv.innerHTML = getScreenContent(screens[currentScreen], currentScreen);
-    tempContainer.appendChild(frameDiv);
-    
-    // Render at exact App Store dimensions
-    const canvas = await html2canvas(frameDiv, {
-        width: dimensions.width,
-        height: dimensions.height,
-        scale: 1,
-        backgroundColor: null,
-        useCORS: true,
-        allowTaint: true
-    });
-    
-    // Clean up
-    document.body.removeChild(tempContainer);
-    
-    canvas.toBlob(function(blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `appstore-${dimensions.width}x${dimensions.height}-screen-${currentScreen + 1}-${currentLang}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-    });
-}
-
-async function exportAllScreens() {
-    const deviceDimensions = {
-        'iphone-69': { width: 1320, height: 2868 },
-        'iphone-69-landscape': { width: 2868, height: 1320 },
-        'iphone-67': { width: 1290, height: 2796 },
-        'iphone-67-landscape': { width: 2796, height: 1290 },
-        'iphone-65': { width: 1179, height: 2556 },
-        'iphone-65-landscape': { width: 2556, height: 1179 },
-        'iphone-61': { width: 1284, height: 2778 },
-        'iphone-61-landscape': { width: 2778, height: 1284 },
-        'ipad-129': { width: 2048, height: 2732 },
-        'ipad-129-landscape': { width: 2732, height: 2048 },
-        'ipad-11': { width: 2064, height: 2752 },
-        'ipad-11-landscape': { width: 2752, height: 2064 }
-    };
-    
-    const dimensions = deviceDimensions[currentDevice] || deviceDimensions['iphone-69'];
-    
-    for (let i = 0; i < screens.length; i++) {
-        // Store current screen to restore later
-        const originalScreen = currentScreen;
-        currentScreen = i; // Temporarily switch to this screen for export
-        
-        // Create a temporary container
+function createExportCanvas(screen, dimensions, filename) {
+    return new Promise((resolve) => {
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'fixed';
         tempContainer.style.left = '-9999px';
@@ -712,40 +672,58 @@ async function exportAllScreens() {
         tempContainer.style.height = dimensions.height + 'px';
         document.body.appendChild(tempContainer);
         
-        // Create the frame at full App Store dimensions WITHOUT the phone frame styling
         const frameDiv = document.createElement('div');
         frameDiv.style.width = dimensions.width + 'px';
         frameDiv.style.height = dimensions.height + 'px';
         frameDiv.style.position = 'relative';
         frameDiv.style.overflow = 'hidden';
-        frameDiv.innerHTML = getScreenContent(screens[i], i);
+        frameDiv.innerHTML = getScreenContent(screen, 0);
         tempContainer.appendChild(frameDiv);
         
-        const canvas = await html2canvas(frameDiv, {
-            width: dimensions.width,
-            height: dimensions.height,
-            scale: 1,
-            backgroundColor: null,
-            useCORS: true,
-            allowTaint: true
-        });
+        setTimeout(() => {
+            html2canvas(frameDiv, {
+                width: dimensions.width,
+                height: dimensions.height,
+                scale: 1,
+                backgroundColor: null,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                document.body.removeChild(tempContainer);
+                
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    resolve();
+                });
+            });
+        }, CONSTANTS.EXPORT_DELAY);
+    });
+}
+
+async function exportCurrentScreen() {
+    const dimensions = DEVICE_DIMENSIONS[currentDevice] || DEVICE_DIMENSIONS['iphone-69'];
+    
+    const filename = `appstore-${dimensions.width}x${dimensions.height}-screen-${currentScreen + 1}-${currentLang}.png`;
+    await createExportCanvas(screens[currentScreen], dimensions, filename);
+}
+
+async function exportAllScreens() {
+    const dimensions = DEVICE_DIMENSIONS[currentDevice] || DEVICE_DIMENSIONS['iphone-69'];
+    
+    for (let i = 0; i < screens.length; i++) {
+        const originalScreen = currentScreen;
+        currentScreen = i;
         
-        // Clean up
-        document.body.removeChild(tempContainer);
+        const filename = `appstore-${dimensions.width}x${dimensions.height}-screen-${i + 1}-${currentLang}.png`;
+        await createExportCanvas(screens[i], dimensions, filename);
         
-        canvas.toBlob(function(blob) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `appstore-${dimensions.width}x${dimensions.height}-screen-${i + 1}-${currentLang}.png`;
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-        
-        // Restore original screen
         currentScreen = originalScreen;
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, CONSTANTS.EXPORT_DELAY));
     }
 }
 
@@ -755,7 +733,7 @@ async function exportForAllLanguages() {
     
     for (let langBtn of languages) {
         langBtn.click();
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, CONSTANTS.LANGUAGE_SWITCH_DELAY));
         await exportAllScreens();
     }
 }
@@ -797,9 +775,9 @@ function loadProject(event) {
                 screens = screens.map(screen => ({
                     ...screen,
                     layerOrder: screen.layerOrder || 'front',
-                    screenshotOpacity: screen.screenshotOpacity !== undefined ? screen.screenshotOpacity : 100,
+                    screenshotOpacity: screen.screenshotOpacity !== undefined ? screen.screenshotOpacity : CONSTANTS.DEFAULT_SCALE,
                     overlayOpacity: screen.overlayOpacity !== undefined ? screen.overlayOpacity : 90,
-                    bgColor: screen.bgColor || '#ffffff'
+                    bgColor: screen.bgColor || CONSTANTS.DEFAULT_COLORS.background
                 }));
                 
                 currentDevice = projectData.settings.currentDevice;
@@ -831,10 +809,9 @@ function loadProject(event) {
 document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     updateScreenTabs();
-    // Delay initial preview to ensure all elements are loaded
     setTimeout(() => {
         updatePreview();
-    }, 100);
+    }, CONSTANTS.LANGUAGE_SWITCH_DELAY);
 });
 
 function setupEventListeners() {
