@@ -630,7 +630,11 @@ async function exportCurrentScreen() {
         'iphone-65': { width: 1179, height: 2556 },
         'iphone-65-landscape': { width: 2556, height: 1179 },
         'iphone-61': { width: 1284, height: 2778 },
-        'iphone-61-landscape': { width: 2778, height: 1284 }
+        'iphone-61-landscape': { width: 2778, height: 1284 },
+        'ipad-129': { width: 2048, height: 2732 },
+        'ipad-129-landscape': { width: 2732, height: 2048 },
+        'ipad-11': { width: 2064, height: 2752 },
+        'ipad-11-landscape': { width: 2752, height: 2064 }
     };
     
     const dimensions = deviceDimensions[currentDevice] || deviceDimensions['iphone-69'];
@@ -685,7 +689,11 @@ async function exportAllScreens() {
         'iphone-65': { width: 1179, height: 2556 },
         'iphone-65-landscape': { width: 2556, height: 1179 },
         'iphone-61': { width: 1284, height: 2778 },
-        'iphone-61-landscape': { width: 2778, height: 1284 }
+        'iphone-61-landscape': { width: 2778, height: 1284 },
+        'ipad-129': { width: 2048, height: 2732 },
+        'ipad-129-landscape': { width: 2732, height: 2048 },
+        'ipad-11': { width: 2064, height: 2752 },
+        'ipad-11-landscape': { width: 2752, height: 2064 }
     };
     
     const dimensions = deviceDimensions[currentDevice] || deviceDimensions['iphone-69'];

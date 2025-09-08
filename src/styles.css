@@ -383,6 +383,7 @@
         .device-selector {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .device-btn {
@@ -466,6 +467,28 @@
             width: 2778px;
             height: 1284px;
         }
+        
+        /* iPad 12.9" Display */
+        .phone-frame.ipad-129 {
+            width: 2048px;
+            height: 2732px;
+        }
+        
+        .phone-frame.ipad-129-landscape {
+            width: 2732px;
+            height: 2048px;
+        }
+        
+        /* iPad 11" Display */
+        .phone-frame.ipad-11 {
+            width: 2064px;
+            height: 2752px;
+        }
+        
+        .phone-frame.ipad-11-landscape {
+            width: 2752px;
+            height: 2064px;
+        }
 
         .screen-content {
             width: 100%;
@@ -479,10 +502,14 @@
         .android .screen-content {
             border-radius: 20px;
         }
-
-        .ipad .screen-content {
-            border-radius: 10px;
+        
+        .phone-frame.ipad-129 .screen-content,
+        .phone-frame.ipad-129-landscape .screen-content,
+        .phone-frame.ipad-11 .screen-content,
+        .phone-frame.ipad-11-landscape .screen-content {
+            border-radius: 20px;
         }
+
 
         .screenshot-container {
             width: 100%;
