@@ -4,7 +4,7 @@ Create stunning App Store screenshots with device frames, text overlays, and pro
 
 ## Versions
 
-### [v001](./v001) - Classic Version
+### [v001](./v001) - Current Version
 Stable, feature-complete screenshot generator with:
 - Multi-screen management
 - Device frames (iPhone, Android, iPad)
@@ -13,8 +13,8 @@ Stable, feature-complete screenshot generator with:
 - Multi-language export
 - Project save/load
 
-### [000](./000) - React Version
-Modern React implementation with:
+### [000](./000) - Legacy Version (React)
+Previous React implementation with:
 - Component-based architecture
 - MCP server integration
 - VLM context support
@@ -23,11 +23,11 @@ Modern React implementation with:
 ## Quick Start
 
 ```bash
-# Classic version
+# Current version (recommended)
 cd v001
 open index.html
 
-# React version
+# Legacy React version
 cd 000
 npm install
 npm run dev
