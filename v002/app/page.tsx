@@ -15,6 +15,7 @@ import {
   Palette, Move, Save, Grid, RefreshCcw
 } from "lucide-react"
 import type { Screen, DeviceType } from '@/types/preview-generator'
+import { deviceSizes } from '@/types/preview-generator'
 
 export default function Home() {
   const [screens, setScreens] = useState<Screen[]>([{
@@ -291,12 +292,25 @@ export default function Home() {
   const exportCurrentPreview = async () => {
     const element = document.getElementById('device-mockup')
     if (element) {
+      const deviceSize = deviceSizes[deviceType]
+      const targetWidth = deviceSize.width
+      const targetHeight = deviceSize.height
+
+      // Get current element dimensions
+      const rect = element.getBoundingClientRect()
+      const scaleX = targetWidth / rect.width
+      const scaleY = targetHeight / rect.height
+      const scale = Math.min(scaleX, scaleY)
+
       const canvas = await html2canvas(element, {
         backgroundColor: null,
-        scale: 2,
+        scale: scale,
+        width: targetWidth,
+        height: targetHeight,
       })
+
       const link = document.createElement('a')
-      link.download = `app-preview-${currentScreen + 1}.png`
+      link.download = `app-preview-${deviceSize.name.replace(/[^a-zA-Z0-9]/g, '-')}-${currentScreen + 1}.png`
       link.href = canvas.toDataURL()
       link.click()
     }
@@ -1087,7 +1101,36 @@ export default function Home() {
                       Export & Save
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Device Type (App Store Format)</Label>
+                      <RadioGroup
+                        value={deviceType}
+                        onValueChange={(value: DeviceType) => setDeviceType(value)}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="iphone-69" id="device-69" />
+                          <Label htmlFor="device-69">iPhone 6.9" (1242×2688px)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="iphone-67" id="device-67" />
+                          <Label htmlFor="device-67">iPhone 6.7" (1242×2688px)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="iphone-65" id="device-65" />
+                          <Label htmlFor="device-65">iPhone 6.5" (1242×2688px)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="iphone-61" id="device-61" />
+                          <Label htmlFor="device-61">iPhone 6.1" (1284×2778px)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="iphone-69-landscape" id="device-69-landscape" />
+                          <Label htmlFor="device-69-landscape">iPhone Landscape (2688×1242px)</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
                       <Button onClick={exportCurrentPreview} variant="outline" size="sm">
                         Export Current
