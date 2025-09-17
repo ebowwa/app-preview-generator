@@ -457,8 +457,7 @@ export default function Home() {
               <CardContent className="p-0">
                 <div
                   id="preview-content"
-                  className="rounded-lg p-8 min-h-[600px] flex items-center justify-center relative"
-                  style={getBackgroundStyle(screen)}
+                  className="rounded-lg p-8 min-h-[600px] flex items-center justify-center relative bg-gray-100"
                 >
                   {showGrid && (
                     <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 pointer-events-none">
@@ -479,7 +478,10 @@ export default function Home() {
                       height: '650px'
                     }}
                   >
-                    <div className="bg-white w-full h-full relative overflow-hidden rounded-[2.5rem]">
+                    <div
+                      className="w-full h-full relative overflow-hidden rounded-[2.5rem]"
+                      style={getBackgroundStyle(screen)}
+                    >
                       {/* Overlay (front or back based on layer order) */}
                       {(screen.layerOrder === 'front') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
                         <div
@@ -600,7 +602,10 @@ export default function Home() {
                               height: '130px'
                             }}
                           >
-                            <div className="bg-white w-full h-full relative overflow-hidden rounded-md">
+                            <div
+                              className="w-full h-full relative overflow-hidden rounded-md"
+                              style={getBackgroundStyle(screenItem)}
+                            >
                               {/* Thumbnail Overlay */}
                               {screenItem.overlayStyle !== 'none' && (screenItem.title || screenItem.subtitle || screenItem.description) && (
                                 <div
