@@ -20,9 +20,9 @@ export default function Home() {
   const [screens, setScreens] = useState<Screen[]>([{
     id: '1',
     screenshot: null,
-    title: 'Welcome to Our App',
-    subtitle: 'The best experience awaits',
-    description: 'Discover amazing features and intuitive design',
+    title: '',
+    subtitle: '',
+    description: '',
     overlayStyle: 'gradient',
     textPosition: 'bottom',
     devicePosition: 'center',
@@ -58,49 +58,50 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const presetInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-load saved project on mount
-  useEffect(() => {
-    const loadSavedProject = async () => {
-      try {
-        const response = await fetch('/app-screenshots-1758064347433.json')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.screens && data.screens.length > 0) {
-            const mappedScreens = data.screens.map((screen: any, index: number) => ({
-              id: String(index + 1),
-              screenshot: screen.screenshot || null,
-              title: screen.title || '',
-              subtitle: screen.subtitle || '',
-              description: screen.description || '',
-              overlayStyle: screen.overlayStyle || 'gradient',
-              textPosition: screen.textPosition || 'bottom',
-              devicePosition: screen.devicePosition || 'center',
-              bgStyle: screen.bgStyle || 'gradient',
-              layoutStyle: screen.layoutStyle || 'standard',
-              position: {
-                x: screen.position?.x ?? 0,
-                y: screen.position?.y ?? 0,
-                scale: screen.position?.scale ?? 100,
-                rotation: screen.position?.rotation ?? 0
-              },
-              opacity: {
-                screenshot: screen.opacity?.screenshot ?? 100,
-                overlay: screen.opacity?.overlay ?? 90
-              },
-              primaryColor: screen.primaryColor || '#4F46E5',
-              secondaryColor: screen.secondaryColor || '#7C3AED',
-              bgColor: screen.bgColor || '#F3F4F6',
-              layerOrder: screen.layerOrder || 'front'
-            }))
-            setScreens(mappedScreens)
-          }
-        }
-      } catch (error) {
-        console.error('Error loading project:', error)
-      }
-    }
-    loadSavedProject()
-  }, [])
+  // Auto-load saved project on mount (disabled by default)
+  // Uncomment and update the URL to enable auto-loading
+  // useEffect(() => {
+  //   const loadSavedProject = async () => {
+  //     try {
+  //       const response = await fetch('/your-project.json')
+  //       if (response.ok) {
+  //         const data = await response.json()
+  //         if (data.screens && data.screens.length > 0) {
+  //           const mappedScreens = data.screens.map((screen: any, index: number) => ({
+  //             id: String(index + 1),
+  //             screenshot: screen.screenshot || null,
+  //             title: screen.overlayTitle || screen.title || '',
+  //             subtitle: screen.overlaySubtitle || screen.subtitle || '',
+  //             description: screen.overlayDescription || screen.description || '',
+  //             overlayStyle: screen.overlayStyle || 'gradient',
+  //             textPosition: screen.textPosition || 'bottom',
+  //             devicePosition: screen.devicePosition || 'center',
+  //             bgStyle: screen.bgStyle || 'gradient',
+  //             layoutStyle: screen.layoutStyle || 'standard',
+  //             position: {
+  //               x: screen.imagePosition?.x ?? screen.position?.x ?? 0,
+  //               y: screen.imagePosition?.y ?? screen.position?.y ?? 0,
+  //               scale: screen.imagePosition?.scale ?? screen.position?.scale ?? 100,
+  //               rotation: screen.imagePosition?.rotation ?? screen.position?.rotation ?? 0
+  //             },
+  //             opacity: {
+  //               screenshot: screen.screenshotOpacity ?? screen.opacity?.screenshot ?? 100,
+  //               overlay: screen.overlayOpacity ?? screen.opacity?.overlay ?? 90
+  //             },
+  //             primaryColor: screen.primaryColor || '#4F46E5',
+  //             secondaryColor: screen.secondaryColor || '#7C3AED',
+  //             bgColor: screen.bgColor || '#F3F4F6',
+  //             layerOrder: screen.layerOrder || 'front'
+  //           }))
+  //           setScreens(mappedScreens)
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error loading project:', error)
+  //     }
+  //   }
+  //   loadSavedProject()
+  // }, [])
 
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -177,7 +178,8 @@ export default function Home() {
     if (file) {
       const reader = new FileReader()
       reader.onload = (event) => {
-        updateScreen({ screenshot: event.target?.result as string })
+        const result = event.target?.result as string
+        updateScreen({ screenshot: result })
       }
       reader.readAsDataURL(file)
     }
@@ -258,15 +260,19 @@ export default function Home() {
             const mappedScreens = data.screens.map((s: any, index: number) => ({
               ...s,
               id: s.id || String(index + 1),
+              // Map v001 fields to v002 if needed
+              title: s.overlayTitle || s.title || '',
+              subtitle: s.overlaySubtitle || s.subtitle || '',
+              description: s.overlayDescription || s.description || '',
               position: {
-                x: s.position?.x ?? 0,
-                y: s.position?.y ?? 0,
-                scale: s.position?.scale ?? 100,
-                rotation: s.position?.rotation ?? 0
+                x: s.imagePosition?.x ?? s.position?.x ?? 0,
+                y: s.imagePosition?.y ?? s.position?.y ?? 0,
+                scale: s.imagePosition?.scale ?? s.position?.scale ?? 100,
+                rotation: s.imagePosition?.rotation ?? s.position?.rotation ?? 0
               },
               opacity: {
-                screenshot: s.opacity?.screenshot ?? 100,
-                overlay: s.opacity?.overlay ?? 90
+                screenshot: s.screenshotOpacity ?? s.opacity?.screenshot ?? 100,
+                overlay: s.overlayOpacity ?? s.opacity?.overlay ?? 90
               },
               layerOrder: s.layerOrder || 'front'
             }))
