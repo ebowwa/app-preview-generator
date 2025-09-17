@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "app-preview": {
-      "command": "node",
-      "args": ["/Users/ebowwa/Downloads/app-preview-generator/mcp-server/index.js"],
-      "env": {}
-    }
-  }
-}

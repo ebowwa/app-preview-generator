@@ -50,3 +50,5 @@ pnpm-lock.yaml
 .cache/
 .temp/
 .vercel/
+/node-starter
+/legacy
