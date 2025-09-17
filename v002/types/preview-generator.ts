@@ -15,6 +15,10 @@ export interface Screen {
     scale: number
     rotation: number
   }
+  textOverlayPosition: {
+    x: number
+    y: number
+  }
   opacity: {
     screenshot: number
     overlay: number

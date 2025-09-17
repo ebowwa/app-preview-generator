@@ -34,6 +34,10 @@ export default function Home() {
       scale: 100,
       rotation: 0
     },
+    textOverlayPosition: {
+      x: 0,
+      y: 0
+    },
     opacity: {
       screenshot: 100,
       overlay: 90
@@ -53,6 +57,13 @@ export default function Home() {
     startY: 0,
     initialX: 50,
     initialY: 50
+  })
+  const [textDragState, setTextDragState] = useState({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0
   })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -103,12 +114,27 @@ export default function Home() {
   //   loadSavedProject()
   // }, [])
 
-  // Drag handlers
+  // Image Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     const currentPos = screens[currentScreen].position || { x: 0, y: 0, scale: 100, rotation: 0 }
-    
+
     setDragState({
+      isDragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: currentPos.x,
+      initialY: currentPos.y
+    })
+  }
+
+  // Text Drag handlers
+  const handleTextMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation() // Prevent image drag when dragging text
+    const currentPos = screens[currentScreen].textOverlayPosition || { x: 0, y: 0 }
+
+    setTextDragState({
       isDragging: true,
       startX: e.clientX,
       startY: e.clientY,
@@ -127,15 +153,15 @@ export default function Home() {
 
   const handleMouseMove = React.useCallback((e: MouseEvent) => {
     if (!dragState.isDragging) return
-    
+
     // Calculate movement delta (divided by 3 for smoother movement)
     const deltaX = (e.clientX - dragState.startX) / 3
     const deltaY = (e.clientY - dragState.startY) / 3
-    
+
     // Add delta to initial position (like v001)
     const newX = dragState.initialX + deltaX
     const newY = dragState.initialY + deltaY
-    
+
     setScreens(prevScreens => {
       const newScreens = [...prevScreens]
       const currentPos = newScreens[currentScreen].position || { x: 0, y: 0, scale: 100, rotation: 0 }
@@ -151,8 +177,36 @@ export default function Home() {
     })
   }, [dragState.isDragging, dragState.startX, dragState.startY, dragState.initialX, dragState.initialY, currentScreen])
 
+  const handleTextMouseMove = React.useCallback((e: MouseEvent) => {
+    if (!textDragState.isDragging) return
+
+    // Calculate movement delta (divided by 5 for finer text movement)
+    const deltaX = (e.clientX - textDragState.startX) / 5
+    const deltaY = (e.clientY - textDragState.startY) / 5
+
+    // Add delta to initial position
+    const newX = textDragState.initialX + deltaX
+    const newY = textDragState.initialY + deltaY
+
+    setScreens(prevScreens => {
+      const newScreens = [...prevScreens]
+      newScreens[currentScreen] = {
+        ...newScreens[currentScreen],
+        textOverlayPosition: {
+          x: newX,
+          y: newY
+        }
+      }
+      return newScreens
+    })
+  }, [textDragState.isDragging, textDragState.startX, textDragState.startY, textDragState.initialX, textDragState.initialY, currentScreen])
+
   const handleMouseUp = React.useCallback(() => {
     setDragState(prev => ({ ...prev, isDragging: false }))
+  }, [])
+
+  const handleTextMouseUp = React.useCallback(() => {
+    setTextDragState(prev => ({ ...prev, isDragging: false }))
   }, [])
 
   useEffect(() => {
@@ -161,7 +215,7 @@ export default function Home() {
       document.addEventListener('mouseup', handleMouseUp)
       document.body.style.cursor = 'grabbing'
       document.body.style.userSelect = 'none'
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove)
         document.removeEventListener('mouseup', handleMouseUp)
@@ -170,6 +224,22 @@ export default function Home() {
       }
     }
   }, [dragState.isDragging, handleMouseMove, handleMouseUp])
+
+  useEffect(() => {
+    if (textDragState.isDragging) {
+      document.addEventListener('mousemove', handleTextMouseMove)
+      document.addEventListener('mouseup', handleTextMouseUp)
+      document.body.style.cursor = 'grabbing'
+      document.body.style.userSelect = 'none'
+
+      return () => {
+        document.removeEventListener('mousemove', handleTextMouseMove)
+        document.removeEventListener('mouseup', handleTextMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+  }, [textDragState.isDragging, handleTextMouseMove, handleTextMouseUp])
 
   const screen = screens[currentScreen]
 
@@ -198,6 +268,7 @@ export default function Home() {
       bgStyle: 'gradient',
       layoutStyle: 'standard',
       position: { x: 0, y: 0, scale: 100, rotation: 0 },
+      textOverlayPosition: { x: 0, y: 0 },
       opacity: { screenshot: 100, overlay: 90 },
       primaryColor: '#4F46E5',
       secondaryColor: '#7C3AED',
@@ -270,6 +341,7 @@ export default function Home() {
                 scale: s.imagePosition?.scale ?? s.position?.scale ?? 100,
                 rotation: s.imagePosition?.rotation ?? s.position?.rotation ?? 0
               },
+              textOverlayPosition: s.textOverlayPosition || { x: 0, y: 0 },
               opacity: {
                 screenshot: s.screenshotOpacity ?? s.opacity?.screenshot ?? 100,
                 overlay: s.overlayOpacity ?? s.opacity?.overlay ?? 90
@@ -384,7 +456,7 @@ export default function Home() {
                       {/* Overlay (front or back based on layer order) */}
                       {(screen.layerOrder === 'front') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
                         <div
-                          className={`absolute left-0 right-0 text-white z-10 ${
+                          className={`absolute left-0 right-0 text-white z-10 cursor-move ${
                             screen.textPosition === 'top' ? 'top-0' :
                             screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
                             'bottom-0'
@@ -397,8 +469,10 @@ export default function Home() {
                               : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
                               : 'rgba(0,0,0,0.8)',
                             opacity: (screen.opacity?.overlay ?? 90) / 100,
-                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
+                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff',
+                            transform: `translate(${(screen.textOverlayPosition?.x ?? 0)}px, ${(screen.textOverlayPosition?.y ?? 0)}px)`
                           }}
+                          onMouseDown={handleTextMouseDown}
                         >
                           {screen.title && (
                             <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{screen.title}</h2>
@@ -437,7 +511,7 @@ export default function Home() {
                       {/* Overlay (back layer) */}
                       {(screen.layerOrder === 'back') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
                         <div
-                          className={`absolute left-0 right-0 text-white z-30 ${
+                          className={`absolute left-0 right-0 text-white z-30 cursor-move ${
                             screen.textPosition === 'top' ? 'top-0' :
                             screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
                             'bottom-0'
@@ -450,8 +524,10 @@ export default function Home() {
                               : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
                               : 'rgba(0,0,0,0.8)',
                             opacity: (screen.opacity?.overlay ?? 90) / 100,
-                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
+                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff',
+                            transform: `translate(${(screen.textOverlayPosition?.x ?? 0)}px, ${(screen.textOverlayPosition?.y ?? 0)}px)`
                           }}
+                          onMouseDown={handleTextMouseDown}
                         >
                           {screen.title && (
                             <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{screen.title}</h2>
@@ -950,10 +1026,53 @@ export default function Home() {
                         min={0}
                         max={100}
                         value={[screen.opacity?.screenshot ?? 100]}
-                        onValueChange={(value) => updateScreen({ 
+                        onValueChange={(value) => updateScreen({
                           opacity: { ...screen.opacity, screenshot: value[0] }
                         })}
                       />
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Type className="h-4 w-4" />
+                        Text Position
+                      </Label>
+
+                      <div>
+                        <Label htmlFor="text-x-position">Text X Position: {screen.textOverlayPosition?.x ?? 0}px</Label>
+                        <Slider
+                          id="text-x-position"
+                          min={-100}
+                          max={100}
+                          value={[screen.textOverlayPosition?.x ?? 0]}
+                          onValueChange={(value) => updateScreen({
+                            textOverlayPosition: { ...screen.textOverlayPosition, x: value[0], y: screen.textOverlayPosition?.y ?? 0 }
+                          })}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="text-y-position">Text Y Position: {screen.textOverlayPosition?.y ?? 0}px</Label>
+                        <Slider
+                          id="text-y-position"
+                          min={-100}
+                          max={100}
+                          value={[screen.textOverlayPosition?.y ?? 0]}
+                          onValueChange={(value) => updateScreen({
+                            textOverlayPosition: { x: screen.textOverlayPosition?.x ?? 0, y: value[0] }
+                          })}
+                        />
+                      </div>
+
+                      <Button
+                        onClick={() => updateScreen({ textOverlayPosition: { x: 0, y: 0 } })}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <RefreshCcw className="h-4 w-4 mr-2" />
+                        Reset Text Position
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
