@@ -482,10 +482,10 @@ export default function Home() {
                       className="w-full h-full relative overflow-hidden rounded-[2.5rem]"
                       style={getBackgroundStyle(screen)}
                     >
-                      {/* Overlay (front or back based on layer order) */}
+                      {/* Static Overlay Background (front layer) */}
                       {(screen.layerOrder === 'front') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
                         <div
-                          className={`absolute left-0 right-0 text-white z-10 cursor-move ${
+                          className={`absolute left-0 right-0 z-5 pointer-events-none ${
                             screen.textPosition === 'top' ? 'top-0' :
                             screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
                             'bottom-0'
@@ -498,6 +498,21 @@ export default function Home() {
                               : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
                               : 'rgba(0,0,0,0.8)',
                             opacity: (screen.opacity?.overlay ?? 90) / 100,
+                            height: screen.textPosition === 'center' ? '120px' : '80px'
+                          }}
+                        />
+                      )}
+
+                      {/* Draggable Text Content (front layer) */}
+                      {(screen.layerOrder === 'front') && (screen.title || screen.subtitle || screen.description) && (
+                        <div
+                          className={`absolute left-0 right-0 text-white z-10 cursor-move ${
+                            screen.textPosition === 'top' ? 'top-0' :
+                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
+                            'bottom-0'
+                          }`}
+                          style={{
+                            padding: '6px',
                             color: screen.overlayStyle === 'minimal' ? '#000' : '#fff',
                             transform: `translate(${(screen.textOverlayPosition?.x ?? 0)}px, ${(screen.textOverlayPosition?.y ?? 0)}px)`
                           }}
@@ -537,10 +552,10 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Overlay (back layer) */}
+                      {/* Static Overlay Background (back layer) */}
                       {(screen.layerOrder === 'back') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
                         <div
-                          className={`absolute left-0 right-0 text-white z-30 cursor-move ${
+                          className={`absolute left-0 right-0 z-25 pointer-events-none ${
                             screen.textPosition === 'top' ? 'top-0' :
                             screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
                             'bottom-0'
@@ -553,6 +568,21 @@ export default function Home() {
                               : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
                               : 'rgba(0,0,0,0.8)',
                             opacity: (screen.opacity?.overlay ?? 90) / 100,
+                            height: screen.textPosition === 'center' ? '120px' : '80px'
+                          }}
+                        />
+                      )}
+
+                      {/* Draggable Text Content (back layer) */}
+                      {(screen.layerOrder === 'back') && (screen.title || screen.subtitle || screen.description) && (
+                        <div
+                          className={`absolute left-0 right-0 text-white z-30 cursor-move ${
+                            screen.textPosition === 'top' ? 'top-0' :
+                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
+                            'bottom-0'
+                          }`}
+                          style={{
+                            padding: '6px',
                             color: screen.overlayStyle === 'minimal' ? '#000' : '#fff',
                             transform: `translate(${(screen.textOverlayPosition?.x ?? 0)}px, ${(screen.textOverlayPosition?.y ?? 0)}px)`
                           }}
