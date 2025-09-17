@@ -117,6 +117,14 @@ export default function Home() {
     })
   }
 
+  const updateScreen = React.useCallback((updates: Partial<Screen>) => {
+    setScreens(prevScreens => {
+      const newScreens = [...prevScreens]
+      newScreens[currentScreen] = { ...newScreens[currentScreen], ...updates }
+      return newScreens
+    })
+  }, [currentScreen])
+
   const handleMouseMove = React.useCallback((e: MouseEvent) => {
     if (!dragState.isDragging) return
     
@@ -164,14 +172,6 @@ export default function Home() {
   }, [dragState.isDragging, handleMouseMove, handleMouseUp])
 
   const screen = screens[currentScreen]
-
-  const updateScreen = React.useCallback((updates: Partial<Screen>) => {
-    setScreens(prevScreens => {
-      const newScreens = [...prevScreens]
-      newScreens[currentScreen] = { ...newScreens[currentScreen], ...updates }
-      return newScreens
-    })
-  }, [currentScreen])
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -324,19 +324,20 @@ export default function Home() {
     }
   }
 
-  const getBackgroundStyle = () => {
-    if (screen.bgStyle === 'gradient') {
+  const getBackgroundStyle = (screenData: Screen) => {
+    if (screenData.bgStyle === 'gradient') {
       return {
-        background: `linear-gradient(135deg, ${screen.primaryColor} 0%, ${screen.secondaryColor} 100%)`
+        background: `linear-gradient(135deg, ${screenData.primaryColor || '#4F46E5'} 0%, ${screenData.secondaryColor || '#7C3AED'} 100%)`
       }
-    } else if (screen.bgStyle === 'pattern') {
+    } else if (screenData.bgStyle === 'pattern') {
       return {
-        backgroundColor: screen.bgColor,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${screen.primaryColor.slice(1)}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        backgroundColor: screenData.bgColor || '#F3F4F6',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${(screenData.primaryColor || '#4F46E5').slice(1)}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
       }
     }
-    return { backgroundColor: screen.bgColor }
+    return { backgroundColor: screenData.bgColor || '#F3F4F6' }
   }
+
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -359,7 +360,7 @@ export default function Home() {
                 <div
                   id="preview-content"
                   className="rounded-lg p-8 min-h-[600px] flex items-center justify-center relative"
-                  style={getBackgroundStyle()}
+                  style={getBackgroundStyle(screen)}
                 >
                   {showGrid && (
                     <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 pointer-events-none">
@@ -369,114 +370,99 @@ export default function Home() {
                     </div>
                   )}
                   
-                  <div 
+                  {/* Device Preview */}
+                  <div
                     className="bg-black rounded-[3rem] p-2 shadow-2xl transition-transform duration-300"
                     style={{
                       transform: getDeviceTransform(),
-                      perspective: '1000px'
+                      perspective: '1000px',
+                      width: '300px',
+                      height: '650px'
                     }}
                   >
-                    <div className="bg-white rounded-[2.5rem] w-[300px] h-[650px] relative overflow-hidden">
-                      {(screen.layerOrder || 'front') === 'front' ? (
-                        <>
-                          {screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
-                            <div 
-                              className={`absolute left-0 right-0 p-6 text-white z-10 ${
-                                screen.textPosition === 'top' ? 'top-0' : 
-                                screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
-                                'bottom-0'
-                              }`}
-                              style={{
-                                background: screen.overlayStyle === 'gradient' 
-                                  ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
-                                  : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
-                                  : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
-                                  : 'rgba(0,0,0,0.8)',
-                                opacity: (screen.opacity?.overlay ?? 90) / 100,
-                                color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
-                              }}
-                            >
-                              {screen.title && (
-                                <h2 className="text-2xl font-bold">{screen.title}</h2>
-                              )}
-                              {screen.subtitle && (
-                                <p className="text-sm opacity-90 mt-1">{screen.subtitle}</p>
-                              )}
-                              {screen.description && (
-                                <p className="text-xs opacity-80 mt-2">{screen.description}</p>
-                              )}
-                            </div>
+                    <div className="bg-white w-full h-full relative overflow-hidden rounded-[2.5rem]">
+                      {/* Overlay (front or back based on layer order) */}
+                      {(screen.layerOrder === 'front') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
+                        <div
+                          className={`absolute left-0 right-0 text-white z-10 ${
+                            screen.textPosition === 'top' ? 'top-0' :
+                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
+                            'bottom-0'
+                          }`}
+                          style={{
+                            padding: '6px',
+                            background: screen.overlayStyle === 'gradient'
+                              ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
+                              : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
+                              : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
+                              : 'rgba(0,0,0,0.8)',
+                            opacity: (screen.opacity?.overlay ?? 90) / 100,
+                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
+                          }}
+                        >
+                          {screen.title && (
+                            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{screen.title}</h2>
                           )}
-                          {screen.screenshot ? (
-                            <img
-                              src={screen.screenshot}
-                              alt="Preview"
-                              className="w-full h-full object-cover absolute z-20 cursor-move"
-                              style={{
-                                transform: `translate(${(screen.position?.x ?? 0)}%, ${(screen.position?.y ?? 0)}%) scale(${(screen.position?.scale ?? 100) / 100}) rotate(${screen.position?.rotation ?? 0}deg)`,
-                                opacity: (screen.opacity?.screenshot ?? 100) / 100
-                              }}
-                              onMouseDown={handleMouseDown}
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                              <div className="text-center">
-                                <Image className="mx-auto h-12 w-12 mb-2" />
-                                <p>Upload a screenshot</p>
-                              </div>
-                            </div>
+                          {screen.subtitle && (
+                            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>{screen.subtitle}</p>
                           )}
-                        </>
+                          {screen.description && (
+                            <p style={{ fontSize: '12px', opacity: 0.8, margin: '8px 0 0 0' }}>{screen.description}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Screenshot */}
+                      {screen.screenshot ? (
+                        <img
+                          src={screen.screenshot}
+                          alt="Preview"
+                          className="w-full h-full object-cover absolute cursor-move"
+                          style={{
+                            transform: `translate(${(screen.position?.x ?? 0)}%, ${(screen.position?.y ?? 0)}%) scale(${(screen.position?.scale ?? 100) / 100}) rotate(${screen.position?.rotation ?? 0}deg)`,
+                            opacity: (screen.opacity?.screenshot ?? 100) / 100,
+                            zIndex: (screen.layerOrder === 'front') ? 20 : 0
+                          }}
+                          onMouseDown={handleMouseDown}
+                        />
                       ) : (
-                        <>
-                          {screen.screenshot ? (
-                            <img
-                              src={screen.screenshot}
-                              alt="Preview"
-                              className="w-full h-full object-cover absolute cursor-move"
-                              style={{
-                                transform: `translate(${(screen.position?.x ?? 0)}%, ${(screen.position?.y ?? 0)}%) scale(${(screen.position?.scale ?? 100) / 100}) rotate(${screen.position?.rotation ?? 0}deg)`,
-                                opacity: (screen.opacity?.screenshot ?? 100) / 100
-                              }}
-                              onMouseDown={handleMouseDown}
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                              <div className="text-center">
-                                <Image className="mx-auto h-12 w-12 mb-2" />
-                                <p>Upload a screenshot</p>
-                              </div>
-                            </div>
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                          <div className="text-center">
+                            <Image className="mx-auto mb-2 h-12 w-12" />
+                            <p>Upload a screenshot</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Overlay (back layer) */}
+                      {(screen.layerOrder === 'back') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
+                        <div
+                          className={`absolute left-0 right-0 text-white z-30 ${
+                            screen.textPosition === 'top' ? 'top-0' :
+                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
+                            'bottom-0'
+                          }`}
+                          style={{
+                            padding: '6px',
+                            background: screen.overlayStyle === 'gradient'
+                              ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
+                              : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
+                              : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
+                              : 'rgba(0,0,0,0.8)',
+                            opacity: (screen.opacity?.overlay ?? 90) / 100,
+                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
+                          }}
+                        >
+                          {screen.title && (
+                            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{screen.title}</h2>
                           )}
-                          {screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
-                            <div 
-                              className={`absolute left-0 right-0 p-6 text-white z-10 ${
-                                screen.textPosition === 'top' ? 'top-0' : 
-                                screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
-                                'bottom-0'
-                              }`}
-                              style={{
-                                background: screen.overlayStyle === 'gradient' 
-                                  ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
-                                  : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
-                                  : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
-                                  : 'rgba(0,0,0,0.8)',
-                                opacity: (screen.opacity?.overlay ?? 90) / 100,
-                                color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
-                              }}
-                            >
-                              {screen.title && (
-                                <h2 className="text-2xl font-bold">{screen.title}</h2>
-                              )}
-                              {screen.subtitle && (
-                                <p className="text-sm opacity-90 mt-1">{screen.subtitle}</p>
-                              )}
-                              {screen.description && (
-                                <p className="text-xs opacity-80 mt-2">{screen.description}</p>
-                              )}
-                            </div>
+                          {screen.subtitle && (
+                            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>{screen.subtitle}</p>
                           )}
-                        </>
+                          {screen.description && (
+                            <p style={{ fontSize: '12px', opacity: 0.8, margin: '8px 0 0 0' }}>{screen.description}</p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -502,50 +488,27 @@ export default function Home() {
                         onClick={() => setCurrentScreen(index)}
                       >
                         {/* Thumbnail Preview */}
-                        <div className="aspect-[9/19.5] bg-gradient-to-br from-gray-100 to-gray-200 rounded-md overflow-hidden relative">
-                          {/* Background */}
-                          <div 
-                            className="absolute inset-0"
+                        <div className="flex items-center justify-center">
+                          {/* Thumbnail Device Preview */}
+                          <div
+                            className="bg-black rounded-lg p-0.5 shadow-lg"
                             style={{
-                              background: screenItem.bgStyle === 'gradient' 
-                                ? `linear-gradient(135deg, ${screenItem.primaryColor} 0%, ${screenItem.secondaryColor} 100%)`
-                                : screenItem.bgStyle === 'pattern' 
-                                ? `${screenItem.bgColor} url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23${screenItem.primaryColor.slice(1)}' fill-opacity='0.1'%3E%3Cpath d='M0 0h20v20H0z'/%3E%3C/g%3E%3C/svg%3E")`
-                                : screenItem.bgColor
+                              width: '60px',
+                              height: '130px'
                             }}
-                          />
-                          
-                          {/* Device Frame */}
-                          <div className="absolute inset-2 bg-black rounded-lg p-0.5">
-                            <div className="bg-white rounded-md w-full h-full relative overflow-hidden">
-                              
-                              {/* Screenshot or Placeholder */}
-                              {screenItem.screenshot ? (
-                                <img
-                                  src={screenItem.screenshot}
-                                  alt={`Screen ${index + 1}`}
-                                  className="w-full h-full object-cover absolute"
-                                  style={{
-                                    transform: `translate(${(screenItem.position?.x ?? 0) * 0.3}%, ${(screenItem.position?.y ?? 0) * 0.3}%) scale(${(screenItem.position?.scale ?? 100) / 120}) rotate(${(screenItem.position?.rotation ?? 0) * 0.5}deg)`,
-                                    opacity: (screenItem.opacity?.screenshot ?? 100) / 100
-                                  }}
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-full text-gray-400">
-                                  <Image className="h-4 w-4" />
-                                </div>
-                              )}
-                              
-                              {/* Text Overlay (if any) */}
+                          >
+                            <div className="bg-white w-full h-full relative overflow-hidden rounded-md">
+                              {/* Thumbnail Overlay */}
                               {screenItem.overlayStyle !== 'none' && (screenItem.title || screenItem.subtitle || screenItem.description) && (
-                                <div 
-                                  className={`absolute left-0 right-0 p-1 text-white text-[6px] ${
-                                    screenItem.textPosition === 'top' ? 'top-0' : 
-                                    screenItem.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                                <div
+                                  className={`absolute left-0 right-0 text-white z-10 ${
+                                    screenItem.textPosition === 'top' ? 'top-0' :
+                                    screenItem.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
                                     'bottom-0'
                                   }`}
                                   style={{
-                                    background: screenItem.overlayStyle === 'gradient' 
+                                    padding: '1px',
+                                    background: screenItem.overlayStyle === 'gradient'
                                       ? `linear-gradient(to ${screenItem.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
                                       : screenItem.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
                                       : screenItem.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
@@ -555,11 +518,32 @@ export default function Home() {
                                   }}
                                 >
                                   {screenItem.title && (
-                                    <div className="font-bold truncate">{screenItem.title}</div>
+                                    <div style={{ fontSize: '4px', fontWeight: 'bold', lineHeight: '5px' }}>{screenItem.title}</div>
                                   )}
                                   {screenItem.subtitle && (
-                                    <div className="truncate">{screenItem.subtitle}</div>
+                                    <div style={{ fontSize: '3px', opacity: 0.9, lineHeight: '4px' }}>{screenItem.subtitle}</div>
                                   )}
+                                  {screenItem.description && (
+                                    <div style={{ fontSize: '2px', opacity: 0.8, lineHeight: '3px' }}>{screenItem.description}</div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Thumbnail Screenshot */}
+                              {screenItem.screenshot ? (
+                                <img
+                                  src={screenItem.screenshot}
+                                  alt="Thumbnail"
+                                  className="w-full h-full object-cover absolute"
+                                  style={{
+                                    transform: `translate(${(screenItem.position?.x ?? 0)}%, ${(screenItem.position?.y ?? 0)}%) scale(${(screenItem.position?.scale ?? 100) / 100}) rotate(${screenItem.position?.rotation ?? 0}deg)`,
+                                    opacity: (screenItem.opacity?.screenshot ?? 100) / 100,
+                                    zIndex: (screenItem.layerOrder === 'front') ? 20 : 0
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground">
+                                  <Image style={{ width: '12px', height: '12px' }} />
                                 </div>
                               )}
                             </div>
