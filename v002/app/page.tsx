@@ -289,7 +289,7 @@ export default function Home() {
   }
 
   const exportCurrentPreview = async () => {
-    const element = document.getElementById('preview-content')
+    const element = document.getElementById('device-mockup')
     if (element) {
       const canvas = await html2canvas(element, {
         backgroundColor: null,
@@ -444,6 +444,7 @@ export default function Home() {
                   
                   {/* Device Preview */}
                   <div
+                    id="device-mockup"
                     className="bg-black rounded-[3rem] p-2 shadow-2xl transition-transform duration-300"
                     style={{
                       transform: getDeviceTransform(),
