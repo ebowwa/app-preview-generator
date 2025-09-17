@@ -539,15 +539,20 @@ export default function Home() {
       const ctx = finalCanvas.getContext('2d')
 
       if (ctx) {
+        // Fill with white background to remove alpha channel
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, targetWidth, targetHeight)
+
         // Center the captured image on the final canvas
         const offsetX = (targetWidth - canvas.width) / 2
         const offsetY = (targetHeight - canvas.height) / 2
         ctx.drawImage(canvas, offsetX, offsetY)
       }
 
+      // Export as JPEG to ensure no alpha channel (App Store requirement)
       const link = document.createElement('a')
-      link.download = `app-preview-${deviceSize.name.replace(/[^a-zA-Z0-9]/g, '-')}-${currentScreen + 1}.png`
-      link.href = finalCanvas.toDataURL('image/png')
+      link.download = `app-preview-${deviceSize.name.replace(/[^a-zA-Z0-9]/g, '-')}-${currentScreen + 1}.jpg`
+      link.href = finalCanvas.toDataURL('image/jpeg', 1.0)
       link.click()
     }
   }
