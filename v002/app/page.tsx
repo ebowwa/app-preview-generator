@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import html2canvas from 'html2canvas'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +14,12 @@ import {
   Palette, Move, Save, Grid, RefreshCcw, Layers
 } from "lucide-react"
 import type { Screen, DeviceType, ImageAsset, Screenshot } from '@/types/preview-generator'
-import { deviceSizes } from '@/types/preview-generator'
+import { getDeviceTransform } from '@/utils/deviceTransforms'
+import { getBackgroundStyle } from '@/utils/backgroundStyles'
+import { getResetPosition, getFitToFramePosition, getFillFramePosition, getCenterPosition } from '@/utils/positioning'
+import { mapLegacyScreenData, parseProjectData, serializeProjectData } from '@/utils/projectMapping'
+import { readFileAsDataURL, readFileAsText, downloadData, generateTimestampFilename } from '@/utils/fileHelpers'
+import { getExportDimensions, generateExportFilename, exportElementToCanvas, canvasToJpegDataUrl } from '@/utils/export'
 
 export default function Home() {
   const [screens, setScreens] = useState<Screen[]>([{
@@ -396,12 +400,11 @@ export default function Home() {
 
   const screen = screens[currentScreen]
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const result = event.target?.result as string
+      try {
+        const result = await readFileAsDataURL(file)
         const newScreenshot: Screenshot = {
           id: `screenshot-${Date.now()}`,
           url: result,
@@ -419,8 +422,9 @@ export default function Home() {
           // Also update legacy screenshot field for backward compatibility
           screenshot: result
         })
+      } catch (error) {
+        console.error('Error uploading image:', error)
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -441,12 +445,11 @@ export default function Home() {
     })
   }
 
-  const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const result = event.target?.result as string
+      try {
+        const result = await readFileAsDataURL(file)
         const newAsset: ImageAsset = {
           id: `asset-${Date.now()}`,
           url: result,
@@ -459,8 +462,9 @@ export default function Home() {
         updateScreen({
           imageAssets: [...(screen.imageAssets || []), newAsset]
         })
+      } catch (error) {
+        console.error('Error uploading asset:', error)
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -516,43 +520,23 @@ export default function Home() {
   const exportCurrentPreview = async () => {
     const element = document.getElementById('device-mockup')
     if (element) {
-      const deviceSize = deviceSizes[deviceType]
-      const targetWidth = deviceSize.width
-      const targetHeight = deviceSize.height
+      const dimensions = getExportDimensions(deviceType)
+      const canvas = await exportElementToCanvas(
+        element,
+        dimensions.targetWidth,
+        dimensions.targetHeight
+      )
 
-      // Calculate scale to achieve target dimensions
-      const rect = element.getBoundingClientRect()
-      const scaleX = targetWidth / rect.width
-      const scaleY = targetHeight / rect.height
-      const scale = Math.max(scaleX, scaleY) // Use max to ensure we cover the full target size
+      const dataUrl = canvasToJpegDataUrl(canvas)
+      const filename = generateExportFilename(
+        dimensions.deviceName,
+        currentScreen
+      )
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: null,
-        scale: scale,
-        useCORS: true,
-      })
-
-      // Create a new canvas with exact App Store dimensions
-      const finalCanvas = document.createElement('canvas')
-      finalCanvas.width = targetWidth
-      finalCanvas.height = targetHeight
-      const ctx = finalCanvas.getContext('2d')
-
-      if (ctx) {
-        // Fill with white background to remove alpha channel
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 0, targetWidth, targetHeight)
-
-        // Center the captured image on the final canvas
-        const offsetX = (targetWidth - canvas.width) / 2
-        const offsetY = (targetHeight - canvas.height) / 2
-        ctx.drawImage(canvas, offsetX, offsetY)
-      }
-
-      // Export as JPEG to ensure no alpha channel (App Store requirement)
+      // Trigger download
       const link = document.createElement('a')
-      link.download = `app-preview-${deviceSize.name.replace(/[^a-zA-Z0-9]/g, '-')}-${currentScreen + 1}.jpg`
-      link.href = finalCanvas.toDataURL('image/jpeg', 1.0)
+      link.download = filename
+      link.href = dataUrl
       link.click()
     }
   }
@@ -566,108 +550,49 @@ export default function Home() {
   }
 
   const saveProject = () => {
-    const data = JSON.stringify({ screens, deviceType }, null, 2)
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.download = `app-screenshots-${Date.now()}.json`
-    link.href = url
-    link.click()
+    const data = serializeProjectData(screens, deviceType)
+    const filename = generateTimestampFilename('app-screenshots', 'json')
+    downloadData(data, filename, 'application/json')
   }
 
-  const loadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const loadProject = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target?.result as string)
-          if (data.screens) {
-            const mappedScreens = data.screens.map((s: any, index: number) => ({
-              ...s,
-              id: s.id || String(index + 1),
-              // Map v001 fields to v002 if needed
-              title: s.overlayTitle || s.title || '',
-              subtitle: s.overlaySubtitle || s.subtitle || '',
-              description: s.overlayDescription || s.description || '',
-              position: {
-                x: s.imagePosition?.x ?? s.position?.x ?? 0,
-                y: s.imagePosition?.y ?? s.position?.y ?? 0,
-                scale: s.imagePosition?.scale ?? s.position?.scale ?? 100,
-                rotation: s.imagePosition?.rotation ?? s.position?.rotation ?? 0
-              },
-              textOverlayPosition: s.textOverlayPosition || { x: 0, y: 0 },
-              opacity: {
-                screenshot: s.screenshotOpacity ?? s.opacity?.screenshot ?? 100,
-                overlay: s.overlayOpacity ?? s.opacity?.overlay ?? 90
-              },
-              layerOrder: s.layerOrder || 'front',
-              imageAssets: s.imageAssets || [],
-              screenshots: s.screenshots || []
-            }))
-            setScreens(mappedScreens)
-          }
+      try {
+        const text = await readFileAsText(file)
+        const data = parseProjectData(text)
+        if (data) {
+          const mappedScreens = data.screens.map((s: any, index: number) =>
+            mapLegacyScreenData(s, index)
+          )
+          setScreens(mappedScreens)
           if (data.deviceType) {
-            setDeviceType(data.deviceType)
+            setDeviceType(data.deviceType as DeviceType)
           }
           setCurrentScreen(0)
-        } catch (error) {
-          console.error('Error loading project:', error)
         }
+      } catch (error) {
+        console.error('Error loading project:', error)
       }
-      reader.readAsText(file)
     }
   }
 
   const resetPosition = () => {
-    updateScreen({
-      position: { x: 0, y: 0, scale: 100, rotation: 0 }
-    })
+    updateScreen({ position: getResetPosition() })
   }
 
   const fitToFrame = () => {
-    updateScreen({
-      position: { x: 0, y: 0, scale: 85, rotation: 0 }
-    })
+    updateScreen({ position: getFitToFramePosition() })
   }
 
   const fillFrame = () => {
-    updateScreen({
-      position: { x: 0, y: 0, scale: 120, rotation: 0 }
-    })
+    updateScreen({ position: getFillFramePosition() })
   }
 
   const centerImage = () => {
-    updateScreen({
-      position: { ...screen.position, x: 0, y: 0 }
-    })
+    updateScreen({ position: getCenterPosition(screen.position || getResetPosition()) })
   }
 
-  const getDeviceTransform = () => {
-    switch (screen.devicePosition) {
-      case 'left': return 'translateX(-20px) rotateY(25deg)'
-      case 'right': return 'translateX(20px) rotateY(-25deg)'
-      case 'angled-left': return 'rotateY(35deg) rotateX(5deg)'
-      case 'angled-right': return 'rotateY(-35deg) rotateX(5deg)'
-      default: return 'none'
-    }
-  }
-
-  const getBackgroundStyle = (screenData: Screen) => {
-    if (screenData.bgStyle === 'gradient') {
-      return {
-        background: `linear-gradient(135deg, ${screenData.primaryColor || '#4F46E5'} 0%, ${screenData.secondaryColor || '#7C3AED'} 100%)`
-      }
-    } else if (screenData.bgStyle === 'pattern') {
-      // Use primaryColor for the pattern itself, bgColor for background
-      const patternColor = (screenData.primaryColor || '#4F46E5').replace('#', '%23')
-      return {
-        backgroundColor: screenData.bgColor || '#F3F4F6',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${patternColor}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-      }
-    }
-    return { backgroundColor: screenData.bgColor || '#F3F4F6' }
-  }
 
 
   return (
@@ -705,7 +630,7 @@ export default function Home() {
                     id="device-mockup"
                     className="bg-black rounded-[3rem] p-2 shadow-2xl transition-transform duration-300"
                     style={{
-                      transform: getDeviceTransform(),
+                      transform: getDeviceTransform(screen.devicePosition),
                       perspective: '1000px',
                       width: '300px',
                       height: '650px'
