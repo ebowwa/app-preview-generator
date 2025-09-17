@@ -654,9 +654,11 @@ export default function Home() {
         background: `linear-gradient(135deg, ${screenData.primaryColor || '#4F46E5'} 0%, ${screenData.secondaryColor || '#7C3AED'} 100%)`
       }
     } else if (screenData.bgStyle === 'pattern') {
+      // Use primaryColor for the pattern itself, bgColor for background
+      const patternColor = (screenData.primaryColor || '#4F46E5').replace('#', '%23')
       return {
         backgroundColor: screenData.bgColor || '#F3F4F6',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${(screenData.primaryColor || '#4F46E5').slice(1)}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${patternColor}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
       }
     }
     return { backgroundColor: screenData.bgColor || '#F3F4F6' }
@@ -1433,7 +1435,7 @@ export default function Home() {
                       </>
                     )}
                     
-                    {(screen.bgStyle === 'solid' || screen.bgStyle === 'pattern') && (
+                    {screen.bgStyle === 'solid' && (
                       <div>
                         <Label htmlFor="bg-color">Background Color</Label>
                         <div className="flex gap-2">
@@ -1451,6 +1453,45 @@ export default function Home() {
                           />
                         </div>
                       </div>
+                    )}
+
+                    {screen.bgStyle === 'pattern' && (
+                      <>
+                        <div>
+                          <Label htmlFor="bg-color">Background Color</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="bg-color"
+                              type="color"
+                              value={screen.bgColor}
+                              onChange={(e) => updateScreen({ bgColor: e.target.value })}
+                              className="w-16 h-10"
+                            />
+                            <Input
+                              value={screen.bgColor}
+                              onChange={(e) => updateScreen({ bgColor: e.target.value })}
+                              placeholder="#F3F4F6"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="pattern-color">Pattern Color</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="pattern-color"
+                              type="color"
+                              value={screen.primaryColor || '#4F46E5'}
+                              onChange={(e) => updateScreen({ primaryColor: e.target.value })}
+                              className="w-16 h-10"
+                            />
+                            <Input
+                              value={screen.primaryColor || '#4F46E5'}
+                              onChange={(e) => updateScreen({ primaryColor: e.target.value })}
+                              placeholder="#4F46E5"
+                            />
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     <div>
