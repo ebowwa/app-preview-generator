@@ -1,3 +1,19 @@
+export interface ImageAsset {
+  id: string
+  url: string
+  position: {
+    x: number
+    y: number
+  }
+  size: {
+    width: number
+    height: number
+  }
+  rotation: number
+  opacity: number
+  zIndex: number
+}
+
 export interface Screen {
   id: string
   screenshot: string | null
@@ -27,6 +43,7 @@ export interface Screen {
   secondaryColor: string
   bgColor: string
   layerOrder: 'front' | 'back'
+  imageAssets: ImageAsset[]
 }
 
 export interface DeviceSize {

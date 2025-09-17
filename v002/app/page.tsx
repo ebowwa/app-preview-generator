@@ -14,7 +14,7 @@ import {
   Upload, Download, Plus, Image, Type, 
   Palette, Move, Save, Grid, RefreshCcw
 } from "lucide-react"
-import type { Screen, DeviceType } from '@/types/preview-generator'
+import type { Screen, DeviceType, ImageAsset } from '@/types/preview-generator'
 import { deviceSizes } from '@/types/preview-generator'
 
 export default function Home() {
@@ -46,7 +46,8 @@ export default function Home() {
     primaryColor: '#4F46E5',
     secondaryColor: '#7C3AED',
     bgColor: '#F3F4F6',
-    layerOrder: 'front'
+    layerOrder: 'front',
+    imageAssets: []
   }])
 
   const [currentScreen, setCurrentScreen] = useState(0)
@@ -68,6 +69,7 @@ export default function Home() {
   })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const assetInputRef = useRef<HTMLInputElement>(null)
   const presetInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-load saved project on mount (disabled by default)
@@ -256,6 +258,43 @@ export default function Home() {
     }
   }
 
+  const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const result = event.target?.result as string
+        const newAsset: ImageAsset = {
+          id: `asset-${Date.now()}`,
+          url: result,
+          position: { x: 0, y: 0 },
+          size: { width: 100, height: 100 },
+          rotation: 0,
+          opacity: 100,
+          zIndex: 10
+        }
+        updateScreen({
+          imageAssets: [...(screen.imageAssets || []), newAsset]
+        })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeAsset = (assetId: string) => {
+    updateScreen({
+      imageAssets: screen.imageAssets.filter(asset => asset.id !== assetId)
+    })
+  }
+
+  const updateAsset = (assetId: string, updates: Partial<ImageAsset>) => {
+    updateScreen({
+      imageAssets: screen.imageAssets.map(asset =>
+        asset.id === assetId ? { ...asset, ...updates } : asset
+      )
+    })
+  }
+
   const addScreen = () => {
     setScreens([...screens, {
       id: String(screens.length + 1),
@@ -274,7 +313,8 @@ export default function Home() {
       primaryColor: '#4F46E5',
       secondaryColor: '#7C3AED',
       bgColor: '#F3F4F6',
-      layerOrder: 'front'
+      layerOrder: 'front',
+      imageAssets: []
     }])
     setCurrentScreen(screens.length)
   }
@@ -372,7 +412,8 @@ export default function Home() {
                 screenshot: s.screenshotOpacity ?? s.opacity?.screenshot ?? 100,
                 overlay: s.overlayOpacity ?? s.opacity?.overlay ?? 90
               },
-              layerOrder: s.layerOrder || 'front'
+              layerOrder: s.layerOrder || 'front',
+              imageAssets: s.imageAssets || []
             }))
             setScreens(mappedScreens)
           }
@@ -551,6 +592,29 @@ export default function Home() {
                           </div>
                         </div>
                       )}
+
+                      {/* Additional Image Assets */}
+                      {screen.imageAssets && screen.imageAssets.map((asset) => (
+                        <img
+                          key={asset.id}
+                          src={asset.url}
+                          alt={`Asset ${asset.id}`}
+                          className="absolute cursor-move"
+                          style={{
+                            left: `${asset.position.x}px`,
+                            top: `${asset.position.y}px`,
+                            width: `${asset.size.width}px`,
+                            height: `${asset.size.height}px`,
+                            transform: `rotate(${asset.rotation}deg)`,
+                            opacity: asset.opacity / 100,
+                            zIndex: asset.zIndex
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            // TODO: Add drag handler for assets
+                          }}
+                        />
+                      ))}
 
                       {/* Static Overlay Background (back layer) */}
                       {(screen.layerOrder === 'back') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
@@ -764,6 +828,65 @@ export default function Home() {
                         onChange={handleImageUpload}
                         className="hidden"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Additional Image Assets</Label>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => assetInputRef.current?.click()}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Image Asset
+                      </Button>
+                      <input
+                        ref={assetInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAssetUpload}
+                        className="hidden"
+                      />
+
+                      {/* List of image assets */}
+                      {screen.imageAssets && screen.imageAssets.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                          {screen.imageAssets.map((asset, index) => (
+                            <div key={asset.id} className="flex items-center gap-2 p-2 border rounded">
+                              <span className="text-sm flex-1">Asset {index + 1}</span>
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  value={asset.size.width}
+                                  onChange={(e) => updateAsset(asset.id, {
+                                    size: { ...asset.size, width: Number(e.target.value) }
+                                  })}
+                                  className="w-16 h-8 text-xs"
+                                  placeholder="W"
+                                />
+                                <span className="text-xs">×</span>
+                                <Input
+                                  type="number"
+                                  value={asset.size.height}
+                                  onChange={(e) => updateAsset(asset.id, {
+                                    size: { ...asset.size, height: Number(e.target.value) }
+                                  })}
+                                  className="w-16 h-8 text-xs"
+                                  placeholder="H"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => removeAsset(asset.id)}
+                                >
+                                  ×
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>
