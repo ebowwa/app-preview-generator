@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
-import { 
-  Upload, Download, Plus, Image, Type, 
-  Palette, Move, Save, Grid, RefreshCcw
+import {
+  Upload, Download, Plus, Image, Type,
+  Palette, Move, Save, Grid, RefreshCcw, Layers
 } from "lucide-react"
 import type { Screen, DeviceType, ImageAsset } from '@/types/preview-generator'
 import { deviceSizes } from '@/types/preview-generator'
@@ -62,6 +62,21 @@ export default function Home() {
   })
   const [textDragState, setTextDragState] = useState({
     isDragging: false,
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0
+  })
+  const [assetDragState, setAssetDragState] = useState<{
+    isDragging: boolean
+    assetId: string | null
+    startX: number
+    startY: number
+    initialX: number
+    initialY: number
+  }>({
+    isDragging: false,
+    assetId: null,
     startX: 0,
     startY: 0,
     initialX: 0,
@@ -146,6 +161,24 @@ export default function Home() {
     })
   }
 
+  // Asset Drag handlers
+  const handleAssetMouseDown = (assetId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const asset = screen.imageAssets.find(a => a.id === assetId)
+    if (!asset) return
+
+    setAssetDragState({
+      isDragging: true,
+      assetId: assetId,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: asset.position.x,
+      initialY: asset.position.y
+    })
+  }
+
   const updateScreen = React.useCallback((updates: Partial<Screen>) => {
     setScreens(prevScreens => {
       const newScreens = [...prevScreens]
@@ -212,6 +245,24 @@ export default function Home() {
     setTextDragState(prev => ({ ...prev, isDragging: false }))
   }, [])
 
+  const handleAssetMouseMove = React.useCallback((e: MouseEvent) => {
+    if (!assetDragState.isDragging || !assetDragState.assetId) return
+
+    const deltaX = e.clientX - assetDragState.startX
+    const deltaY = e.clientY - assetDragState.startY
+
+    const newX = assetDragState.initialX + deltaX
+    const newY = assetDragState.initialY + deltaY
+
+    updateAsset(assetDragState.assetId, {
+      position: { x: newX, y: newY }
+    })
+  }, [assetDragState])
+
+  const handleAssetMouseUp = React.useCallback(() => {
+    setAssetDragState(prev => ({ ...prev, isDragging: false, assetId: null }))
+  }, [])
+
   useEffect(() => {
     if (dragState.isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
@@ -243,6 +294,22 @@ export default function Home() {
       }
     }
   }, [textDragState.isDragging, handleTextMouseMove, handleTextMouseUp])
+
+  useEffect(() => {
+    if (assetDragState.isDragging) {
+      document.addEventListener('mousemove', handleAssetMouseMove)
+      document.addEventListener('mouseup', handleAssetMouseUp)
+      document.body.style.cursor = 'grabbing'
+      document.body.style.userSelect = 'none'
+
+      return () => {
+        document.removeEventListener('mousemove', handleAssetMouseMove)
+        document.removeEventListener('mouseup', handleAssetMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+  }, [assetDragState.isDragging, handleAssetMouseMove, handleAssetMouseUp])
 
   const screen = screens[currentScreen]
 
@@ -609,10 +676,7 @@ export default function Home() {
                             opacity: asset.opacity / 100,
                             zIndex: asset.zIndex
                           }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation()
-                            // TODO: Add drag handler for assets
-                          }}
+                          onMouseDown={(e) => handleAssetMouseDown(asset.id, e)}
                         />
                       ))}
 
@@ -852,16 +916,29 @@ export default function Home() {
                       {screen.imageAssets && screen.imageAssets.length > 0 && (
                         <div className="space-y-2 mt-2">
                           {screen.imageAssets.map((asset, index) => (
-                            <div key={asset.id} className="flex items-center gap-2 p-2 border rounded">
-                              <span className="text-sm flex-1">Asset {index + 1}</span>
-                              <div className="flex items-center gap-1">
+                            <div key={asset.id} className="p-3 border rounded-lg space-y-2 bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Asset {index + 1}</span>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => removeAsset(asset.id)}
+                                >
+                                  ×
+                                </Button>
+                              </div>
+
+                              {/* Size controls */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Size:</Label>
                                 <Input
                                   type="number"
                                   value={asset.size.width}
                                   onChange={(e) => updateAsset(asset.id, {
                                     size: { ...asset.size, width: Number(e.target.value) }
                                   })}
-                                  className="w-16 h-8 text-xs"
+                                  className="w-16 h-7 text-xs"
                                   placeholder="W"
                                 />
                                 <span className="text-xs">×</span>
@@ -871,17 +948,85 @@ export default function Home() {
                                   onChange={(e) => updateAsset(asset.id, {
                                     size: { ...asset.size, height: Number(e.target.value) }
                                   })}
-                                  className="w-16 h-8 text-xs"
+                                  className="w-16 h-7 text-xs"
                                   placeholder="H"
                                 />
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => removeAsset(asset.id)}
-                                >
-                                  ×
-                                </Button>
+                              </div>
+
+                              {/* Position controls */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-xs w-12">X:</Label>
+                                  <Slider
+                                    min={-200}
+                                    max={500}
+                                    value={[asset.position.x]}
+                                    onValueChange={(value) => updateAsset(asset.id, {
+                                      position: { ...asset.position, x: value[0] }
+                                    })}
+                                    className="flex-1"
+                                  />
+                                  <span className="text-xs w-12">{asset.position.x}px</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-xs w-12">Y:</Label>
+                                  <Slider
+                                    min={-200}
+                                    max={800}
+                                    value={[asset.position.y]}
+                                    onValueChange={(value) => updateAsset(asset.id, {
+                                      position: { ...asset.position, y: value[0] }
+                                    })}
+                                    className="flex-1"
+                                  />
+                                  <span className="text-xs w-12">{asset.position.y}px</span>
+                                </div>
+                              </div>
+
+                              {/* Opacity control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Opacity:</Label>
+                                <Slider
+                                  min={0}
+                                  max={100}
+                                  value={[asset.opacity]}
+                                  onValueChange={(value) => updateAsset(asset.id, {
+                                    opacity: value[0]
+                                  })}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs w-12">{asset.opacity}%</span>
+                              </div>
+
+                              {/* Layer control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Layer:</Label>
+                                <Input
+                                  type="number"
+                                  value={asset.zIndex}
+                                  onChange={(e) => updateAsset(asset.id, {
+                                    zIndex: Number(e.target.value)
+                                  })}
+                                  className="w-16 h-7 text-xs"
+                                  min="0"
+                                  max="100"
+                                />
+                                <span className="text-xs text-gray-500">(Higher = Front)</span>
+                              </div>
+
+                              {/* Rotation control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Rotate:</Label>
+                                <Slider
+                                  min={-180}
+                                  max={180}
+                                  value={[asset.rotation]}
+                                  onValueChange={(value) => updateAsset(asset.id, {
+                                    rotation: value[0]
+                                  })}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs w-12">{asset.rotation}°</span>
                               </div>
                             </div>
                           ))}
