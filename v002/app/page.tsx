@@ -1,0 +1,931 @@
+'use client'
+
+import React, { useState, useRef, useEffect } from 'react'
+import html2canvas from 'html2canvas'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Textarea } from "@/components/ui/textarea"
+import { 
+  Upload, Download, Plus, Image, Type, 
+  Palette, Move, Save, Grid, RefreshCcw
+} from "lucide-react"
+import type { Screen, DeviceType } from '@/types/preview-generator'
+
+export default function Home() {
+  const [screens, setScreens] = useState<Screen[]>([{
+    id: '1',
+    screenshot: null,
+    title: 'Welcome to Our App',
+    subtitle: 'The best experience awaits',
+    description: 'Discover amazing features and intuitive design',
+    overlayStyle: 'gradient',
+    textPosition: 'bottom',
+    devicePosition: 'center',
+    bgStyle: 'gradient',
+    layoutStyle: 'standard',
+    position: {
+      x: 0,
+      y: 0,
+      scale: 100,
+      rotation: 0
+    },
+    opacity: {
+      screenshot: 100,
+      overlay: 90
+    },
+    primaryColor: '#4F46E5',
+    secondaryColor: '#7C3AED',
+    bgColor: '#F3F4F6',
+    layerOrder: 'front'
+  }])
+
+  const [currentScreen, setCurrentScreen] = useState(0)
+  const [deviceType, setDeviceType] = useState<DeviceType>('iphone-69')
+  const [showGrid, setShowGrid] = useState(false)
+  const [dragState, setDragState] = useState({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    initialX: 50,
+    initialY: 50
+  })
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const presetInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-load saved project on mount
+  useEffect(() => {
+    const loadSavedProject = async () => {
+      try {
+        const response = await fetch('/app-screenshots-1758064347433.json')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.screens && data.screens.length > 0) {
+            const mappedScreens = data.screens.map((screen: any, index: number) => ({
+              id: String(index + 1),
+              screenshot: screen.screenshot || null,
+              title: screen.title || '',
+              subtitle: screen.subtitle || '',
+              description: screen.description || '',
+              overlayStyle: screen.overlayStyle || 'gradient',
+              textPosition: screen.textPosition || 'bottom',
+              devicePosition: screen.devicePosition || 'center',
+              bgStyle: screen.bgStyle || 'gradient',
+              layoutStyle: screen.layoutStyle || 'standard',
+              position: {
+                x: screen.position?.x ?? 0,
+                y: screen.position?.y ?? 0,
+                scale: screen.position?.scale ?? 100,
+                rotation: screen.position?.rotation ?? 0
+              },
+              opacity: {
+                screenshot: screen.opacity?.screenshot ?? 100,
+                overlay: screen.opacity?.overlay ?? 90
+              },
+              primaryColor: screen.primaryColor || '#4F46E5',
+              secondaryColor: screen.secondaryColor || '#7C3AED',
+              bgColor: screen.bgColor || '#F3F4F6',
+              layerOrder: screen.layerOrder || 'front'
+            }))
+            setScreens(mappedScreens)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading project:', error)
+      }
+    }
+    loadSavedProject()
+  }, [])
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const currentPos = screens[currentScreen].position || { x: 0, y: 0, scale: 100, rotation: 0 }
+    
+    setDragState({
+      isDragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: currentPos.x,
+      initialY: currentPos.y
+    })
+  }
+
+  const handleMouseMove = React.useCallback((e: MouseEvent) => {
+    if (!dragState.isDragging) return
+    
+    // Calculate movement delta (divided by 3 for smoother movement)
+    const deltaX = (e.clientX - dragState.startX) / 3
+    const deltaY = (e.clientY - dragState.startY) / 3
+    
+    // Add delta to initial position (like v001)
+    const newX = dragState.initialX + deltaX
+    const newY = dragState.initialY + deltaY
+    
+    setScreens(prevScreens => {
+      const newScreens = [...prevScreens]
+      const currentPos = newScreens[currentScreen].position || { x: 0, y: 0, scale: 100, rotation: 0 }
+      newScreens[currentScreen] = {
+        ...newScreens[currentScreen],
+        position: {
+          ...currentPos,
+          x: newX,
+          y: newY
+        }
+      }
+      return newScreens
+    })
+  }, [dragState.isDragging, dragState.startX, dragState.startY, dragState.initialX, dragState.initialY, currentScreen])
+
+  const handleMouseUp = React.useCallback(() => {
+    setDragState(prev => ({ ...prev, isDragging: false }))
+  }, [])
+
+  useEffect(() => {
+    if (dragState.isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'grabbing'
+      document.body.style.userSelect = 'none'
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+  }, [dragState.isDragging, handleMouseMove, handleMouseUp])
+
+  const screen = screens[currentScreen]
+
+  const updateScreen = React.useCallback((updates: Partial<Screen>) => {
+    setScreens(prevScreens => {
+      const newScreens = [...prevScreens]
+      newScreens[currentScreen] = { ...newScreens[currentScreen], ...updates }
+      return newScreens
+    })
+  }, [currentScreen])
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        updateScreen({ screenshot: event.target?.result as string })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const addScreen = () => {
+    setScreens([...screens, {
+      id: String(screens.length + 1),
+      screenshot: null,
+      title: '',
+      subtitle: '',
+      description: '',
+      overlayStyle: 'gradient',
+      textPosition: 'bottom',
+      devicePosition: 'center',
+      bgStyle: 'gradient',
+      layoutStyle: 'standard',
+      position: { x: 0, y: 0, scale: 100, rotation: 0 },
+      opacity: { screenshot: 100, overlay: 90 },
+      primaryColor: '#4F46E5',
+      secondaryColor: '#7C3AED',
+      bgColor: '#F3F4F6',
+      layerOrder: 'front'
+    }])
+    setCurrentScreen(screens.length)
+  }
+
+  const removeScreen = (index: number) => {
+    if (screens.length > 1) {
+      const newScreens = screens.filter((_, i) => i !== index)
+      setScreens(newScreens)
+      if (currentScreen >= newScreens.length) {
+        setCurrentScreen(newScreens.length - 1)
+      }
+    }
+  }
+
+  const exportCurrentPreview = async () => {
+    const element = document.getElementById('preview-content')
+    if (element) {
+      const canvas = await html2canvas(element, {
+        backgroundColor: null,
+        scale: 2,
+      })
+      const link = document.createElement('a')
+      link.download = `app-preview-${currentScreen + 1}.png`
+      link.href = canvas.toDataURL()
+      link.click()
+    }
+  }
+
+  const exportAllPreviews = async () => {
+    for (let i = 0; i < screens.length; i++) {
+      setCurrentScreen(i)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await exportCurrentPreview()
+    }
+  }
+
+  const saveProject = () => {
+    const data = JSON.stringify({ screens, deviceType }, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.download = `app-screenshots-${Date.now()}.json`
+    link.href = url
+    link.click()
+  }
+
+  const loadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string)
+          if (data.screens) {
+            const mappedScreens = data.screens.map((s: any, index: number) => ({
+              ...s,
+              id: s.id || String(index + 1),
+              position: {
+                x: s.position?.x ?? 0,
+                y: s.position?.y ?? 0,
+                scale: s.position?.scale ?? 100,
+                rotation: s.position?.rotation ?? 0
+              },
+              opacity: {
+                screenshot: s.opacity?.screenshot ?? 100,
+                overlay: s.opacity?.overlay ?? 90
+              },
+              layerOrder: s.layerOrder || 'front'
+            }))
+            setScreens(mappedScreens)
+          }
+          if (data.deviceType) {
+            setDeviceType(data.deviceType)
+          }
+          setCurrentScreen(0)
+        } catch (error) {
+          console.error('Error loading project:', error)
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const resetPosition = () => {
+    updateScreen({
+      position: { x: 0, y: 0, scale: 100, rotation: 0 }
+    })
+  }
+
+  const fitToFrame = () => {
+    updateScreen({
+      position: { x: 0, y: 0, scale: 85, rotation: 0 }
+    })
+  }
+
+  const fillFrame = () => {
+    updateScreen({
+      position: { x: 0, y: 0, scale: 120, rotation: 0 }
+    })
+  }
+
+  const centerImage = () => {
+    updateScreen({
+      position: { ...screen.position, x: 0, y: 0 }
+    })
+  }
+
+  const getDeviceTransform = () => {
+    switch (screen.devicePosition) {
+      case 'left': return 'translateX(-20px) rotateY(25deg)'
+      case 'right': return 'translateX(20px) rotateY(-25deg)'
+      case 'angled-left': return 'rotateY(35deg) rotateX(5deg)'
+      case 'angled-right': return 'rotateY(-35deg) rotateX(5deg)'
+      default: return 'none'
+    }
+  }
+
+  const getBackgroundStyle = () => {
+    if (screen.bgStyle === 'gradient') {
+      return {
+        background: `linear-gradient(135deg, ${screen.primaryColor} 0%, ${screen.secondaryColor} 100%)`
+      }
+    } else if (screen.bgStyle === 'pattern') {
+      return {
+        backgroundColor: screen.bgColor,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23${screen.primaryColor.slice(1)}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+      }
+    }
+    return { backgroundColor: screen.bgColor }
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-4 flex justify-between items-center">
+          <h1 className="text-3xl font-bold">App Preview Generator</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowGrid(!showGrid)} variant="outline" size="sm">
+              <Grid className="h-4 w-4 mr-2" />
+              {showGrid ? 'Hide' : 'Show'} Grid
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            {/* Preview Canvas */}
+            <Card>
+              <CardContent className="p-0">
+                <div
+                  id="preview-content"
+                  className="rounded-lg p-8 min-h-[600px] flex items-center justify-center relative"
+                  style={getBackgroundStyle()}
+                >
+                  {showGrid && (
+                    <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 pointer-events-none">
+                      {Array.from({ length: 144 }).map((_, i) => (
+                        <div key={i} className="border border-white/10" />
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div 
+                    className="bg-black rounded-[3rem] p-2 shadow-2xl transition-transform duration-300"
+                    style={{
+                      transform: getDeviceTransform(),
+                      perspective: '1000px'
+                    }}
+                  >
+                    <div className="bg-white rounded-[2.5rem] w-[300px] h-[650px] relative overflow-hidden">
+                      {(screen.layerOrder || 'front') === 'front' ? (
+                        <>
+                          {screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
+                            <div 
+                              className={`absolute left-0 right-0 p-6 text-white z-10 ${
+                                screen.textPosition === 'top' ? 'top-0' : 
+                                screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                                'bottom-0'
+                              }`}
+                              style={{
+                                background: screen.overlayStyle === 'gradient' 
+                                  ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
+                                  : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
+                                  : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
+                                  : 'rgba(0,0,0,0.8)',
+                                opacity: (screen.opacity?.overlay ?? 90) / 100,
+                                color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
+                              }}
+                            >
+                              {screen.title && (
+                                <h2 className="text-2xl font-bold">{screen.title}</h2>
+                              )}
+                              {screen.subtitle && (
+                                <p className="text-sm opacity-90 mt-1">{screen.subtitle}</p>
+                              )}
+                              {screen.description && (
+                                <p className="text-xs opacity-80 mt-2">{screen.description}</p>
+                              )}
+                            </div>
+                          )}
+                          {screen.screenshot ? (
+                            <img
+                              src={screen.screenshot}
+                              alt="Preview"
+                              className="w-full h-full object-cover absolute z-20 cursor-move"
+                              style={{
+                                transform: `translate(${(screen.position?.x ?? 0)}%, ${(screen.position?.y ?? 0)}%) scale(${(screen.position?.scale ?? 100) / 100}) rotate(${screen.position?.rotation ?? 0}deg)`,
+                                opacity: (screen.opacity?.screenshot ?? 100) / 100
+                              }}
+                              onMouseDown={handleMouseDown}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                              <div className="text-center">
+                                <Image className="mx-auto h-12 w-12 mb-2" />
+                                <p>Upload a screenshot</p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {screen.screenshot ? (
+                            <img
+                              src={screen.screenshot}
+                              alt="Preview"
+                              className="w-full h-full object-cover absolute cursor-move"
+                              style={{
+                                transform: `translate(${(screen.position?.x ?? 0)}%, ${(screen.position?.y ?? 0)}%) scale(${(screen.position?.scale ?? 100) / 100}) rotate(${screen.position?.rotation ?? 0}deg)`,
+                                opacity: (screen.opacity?.screenshot ?? 100) / 100
+                              }}
+                              onMouseDown={handleMouseDown}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                              <div className="text-center">
+                                <Image className="mx-auto h-12 w-12 mb-2" />
+                                <p>Upload a screenshot</p>
+                              </div>
+                            </div>
+                          )}
+                          {screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
+                            <div 
+                              className={`absolute left-0 right-0 p-6 text-white z-10 ${
+                                screen.textPosition === 'top' ? 'top-0' : 
+                                screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                                'bottom-0'
+                              }`}
+                              style={{
+                                background: screen.overlayStyle === 'gradient' 
+                                  ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
+                                  : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
+                                  : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
+                                  : 'rgba(0,0,0,0.8)',
+                                opacity: (screen.opacity?.overlay ?? 90) / 100,
+                                color: screen.overlayStyle === 'minimal' ? '#000' : '#fff'
+                              }}
+                            >
+                              {screen.title && (
+                                <h2 className="text-2xl font-bold">{screen.title}</h2>
+                              )}
+                              {screen.subtitle && (
+                                <p className="text-sm opacity-90 mt-1">{screen.subtitle}</p>
+                              )}
+                              {screen.description && (
+                                <p className="text-xs opacity-80 mt-2">{screen.description}</p>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Screen Selector */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Screens</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 flex-wrap">
+                  {screens.map((_, index) => (
+                    <div key={index} className="relative group">
+                      <Button
+                        variant={currentScreen === index ? "default" : "outline"}
+                        onClick={() => setCurrentScreen(index)}
+                        className="relative"
+                      >
+                        Screen {index + 1}
+                      </Button>
+                      {screens.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                          onClick={() => removeScreen(index)}
+                        >
+                          ×
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button onClick={addScreen} variant="outline">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-4">
+            {/* Controls */}
+            <Tabs defaultValue="content" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="content">Content</TabsTrigger>
+                <TabsTrigger value="style">Style</TabsTrigger>
+                <TabsTrigger value="position">Position</TabsTrigger>
+                <TabsTrigger value="export">Export</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="content">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Type className="h-5 w-5" />
+                      Text Overlay
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        value={screen.title}
+                        onChange={(e) => updateScreen({ title: e.target.value })}
+                        placeholder="Enter title text"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="subtitle">Subtitle</Label>
+                      <Input
+                        id="subtitle"
+                        value={screen.subtitle}
+                        onChange={(e) => updateScreen({ subtitle: e.target.value })}
+                        placeholder="Enter subtitle text"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={screen.description}
+                        onChange={(e) => updateScreen({ description: e.target.value })}
+                        placeholder="Enter description text"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Text Position</Label>
+                      <RadioGroup 
+                        value={screen.textPosition} 
+                        onValueChange={(value: 'top' | 'center' | 'bottom') => 
+                          updateScreen({ textPosition: value })
+                        }
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="top" id="text-top" />
+                          <Label htmlFor="text-top">Top</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="center" id="text-center" />
+                          <Label htmlFor="text-center">Center</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="bottom" id="text-bottom" />
+                          <Label htmlFor="text-bottom">Bottom</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Overlay Style</Label>
+                      <RadioGroup 
+                        value={screen.overlayStyle} 
+                        onValueChange={(value: Screen['overlayStyle']) => 
+                          updateScreen({ overlayStyle: value })
+                        }
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="none" id="overlay-none" />
+                          <Label htmlFor="overlay-none">No Overlay</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="gradient" id="overlay-gradient" />
+                          <Label htmlFor="overlay-gradient">Gradient</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="minimal" id="overlay-minimal" />
+                          <Label htmlFor="overlay-minimal">Minimal</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="bold" id="overlay-bold" />
+                          <Label htmlFor="overlay-bold">Bold</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="dark" id="overlay-dark" />
+                          <Label htmlFor="overlay-dark">Dark</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="style">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5" />
+                      Visual Style
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Background Style</Label>
+                      <RadioGroup 
+                        value={screen.bgStyle} 
+                        onValueChange={(value: 'solid' | 'gradient' | 'pattern') => 
+                          updateScreen({ bgStyle: value })
+                        }
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="solid" id="bg-solid" />
+                          <Label htmlFor="bg-solid">Solid Color</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="gradient" id="bg-gradient" />
+                          <Label htmlFor="bg-gradient">Gradient</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="pattern" id="bg-pattern" />
+                          <Label htmlFor="bg-pattern">Pattern</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    
+                    {screen.bgStyle === 'gradient' && (
+                      <>
+                        <div>
+                          <Label htmlFor="primary-color">Primary Color</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="primary-color"
+                              type="color"
+                              value={screen.primaryColor}
+                              onChange={(e) => updateScreen({ primaryColor: e.target.value })}
+                              className="w-16 h-10"
+                            />
+                            <Input
+                              value={screen.primaryColor}
+                              onChange={(e) => updateScreen({ primaryColor: e.target.value })}
+                              placeholder="#4F46E5"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="secondary-color">Secondary Color</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="secondary-color"
+                              type="color"
+                              value={screen.secondaryColor}
+                              onChange={(e) => updateScreen({ secondaryColor: e.target.value })}
+                              className="w-16 h-10"
+                            />
+                            <Input
+                              value={screen.secondaryColor}
+                              onChange={(e) => updateScreen({ secondaryColor: e.target.value })}
+                              placeholder="#7C3AED"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    
+                    {(screen.bgStyle === 'solid' || screen.bgStyle === 'pattern') && (
+                      <div>
+                        <Label htmlFor="bg-color">Background Color</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="bg-color"
+                            type="color"
+                            value={screen.bgColor}
+                            onChange={(e) => updateScreen({ bgColor: e.target.value })}
+                            className="w-16 h-10"
+                          />
+                          <Input
+                            value={screen.bgColor}
+                            onChange={(e) => updateScreen({ bgColor: e.target.value })}
+                            placeholder="#F3F4F6"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label>Device Position</Label>
+                      <RadioGroup 
+                        value={screen.devicePosition} 
+                        onValueChange={(value: Screen['devicePosition']) => 
+                          updateScreen({ devicePosition: value })
+                        }
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="center" id="device-center" />
+                          <Label htmlFor="device-center">Center</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="left" id="device-left" />
+                          <Label htmlFor="device-left">Tilted Left</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="right" id="device-right" />
+                          <Label htmlFor="device-right">Tilted Right</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="angled-left" id="device-angled-left" />
+                          <Label htmlFor="device-angled-left">Angled Left</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="angled-right" id="device-angled-right" />
+                          <Label htmlFor="device-angled-right">Angled Right</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Layer Order</Label>
+                      <RadioGroup 
+                        value={screen.layerOrder || 'front'} 
+                        onValueChange={(value: 'front' | 'back') => 
+                          updateScreen({ layerOrder: value })
+                        }
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="front" id="layer-front" />
+                          <Label htmlFor="layer-front">Screenshot in Front</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="back" id="layer-back" />
+                          <Label htmlFor="layer-back">Screenshot Behind Text</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="overlay-opacity">Overlay Opacity: {screen.opacity?.overlay ?? 90}%</Label>
+                      <Slider
+                        id="overlay-opacity"
+                        min={0}
+                        max={100}
+                        value={[screen.opacity?.overlay ?? 90]}
+                        onValueChange={(value) => updateScreen({ 
+                          opacity: { ...screen.opacity, overlay: value[0] }
+                        })}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="position">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Move className="h-5 w-5" />
+                      Screenshot Position
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Screenshot
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={resetPosition} variant="outline" size="sm">
+                        <RefreshCcw className="h-4 w-4 mr-2" />
+                        Reset
+                      </Button>
+                      <Button onClick={fitToFrame} variant="outline" size="sm">
+                        Fit to Frame
+                      </Button>
+                      <Button onClick={fillFrame} variant="outline" size="sm">
+                        Fill Frame
+                      </Button>
+                      <Button onClick={centerImage} variant="outline" size="sm">
+                        Center
+                      </Button>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="x-position">X Position: {screen.position?.x ?? 0}%</Label>
+                      <Slider
+                        id="x-position"
+                        min={-50}
+                        max={50}
+                        value={[screen.position?.x ?? 0]}
+                        onValueChange={(value) => updateScreen({ 
+                          position: { ...screen.position, x: value[0] }
+                        })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="y-position">Y Position: {screen.position?.y ?? 0}%</Label>
+                      <Slider
+                        id="y-position"
+                        min={-50}
+                        max={50}
+                        value={[screen.position?.y ?? 0]}
+                        onValueChange={(value) => updateScreen({ 
+                          position: { ...screen.position, y: value[0] }
+                        })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="scale">Scale: {screen.position?.scale ?? 100}%</Label>
+                      <Slider
+                        id="scale"
+                        min={50}
+                        max={200}
+                        value={[screen.position?.scale ?? 100]}
+                        onValueChange={(value) => updateScreen({ 
+                          position: { ...screen.position, scale: value[0] }
+                        })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="rotation">Rotation: {screen.position?.rotation ?? 0}°</Label>
+                      <Slider
+                        id="rotation"
+                        min={-180}
+                        max={180}
+                        value={[screen.position?.rotation ?? 0]}
+                        onValueChange={(value) => updateScreen({ 
+                          position: { ...screen.position, rotation: value[0] }
+                        })}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="screenshot-opacity">Screenshot Opacity: {screen.opacity?.screenshot ?? 100}%</Label>
+                      <Slider
+                        id="screenshot-opacity"
+                        min={0}
+                        max={100}
+                        value={[screen.opacity?.screenshot ?? 100]}
+                        onValueChange={(value) => updateScreen({ 
+                          opacity: { ...screen.opacity, screenshot: value[0] }
+                        })}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="export">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Download className="h-5 w-5" />
+                      Export & Save
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={exportCurrentPreview} variant="outline" size="sm">
+                        Export Current
+                      </Button>
+                      <Button onClick={exportAllPreviews} variant="outline" size="sm">
+                        Export All
+                      </Button>
+                      <Button onClick={saveProject} variant="outline" size="sm">
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Project
+                      </Button>
+                      <Button 
+                        onClick={() => presetInputRef.current?.click()} 
+                        variant="outline" 
+                        size="sm"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Load Project
+                      </Button>
+                      <input
+                        ref={presetInputRef}
+                        type="file"
+                        accept=".json"
+                        onChange={loadProject}
+                        className="hidden"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
