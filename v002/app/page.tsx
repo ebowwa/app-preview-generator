@@ -296,22 +296,34 @@ export default function Home() {
       const targetWidth = deviceSize.width
       const targetHeight = deviceSize.height
 
-      // Get current element dimensions
+      // Calculate scale to achieve target dimensions
       const rect = element.getBoundingClientRect()
       const scaleX = targetWidth / rect.width
       const scaleY = targetHeight / rect.height
-      const scale = Math.min(scaleX, scaleY)
+      const scale = Math.max(scaleX, scaleY) // Use max to ensure we cover the full target size
 
       const canvas = await html2canvas(element, {
         backgroundColor: null,
         scale: scale,
-        width: targetWidth,
-        height: targetHeight,
+        useCORS: true,
       })
+
+      // Create a new canvas with exact App Store dimensions
+      const finalCanvas = document.createElement('canvas')
+      finalCanvas.width = targetWidth
+      finalCanvas.height = targetHeight
+      const ctx = finalCanvas.getContext('2d')
+
+      if (ctx) {
+        // Center the captured image on the final canvas
+        const offsetX = (targetWidth - canvas.width) / 2
+        const offsetY = (targetHeight - canvas.height) / 2
+        ctx.drawImage(canvas, offsetX, offsetY)
+      }
 
       const link = document.createElement('a')
       link.download = `app-preview-${deviceSize.name.replace(/[^a-zA-Z0-9]/g, '-')}-${currentScreen + 1}.png`
-      link.href = canvas.toDataURL()
+      link.href = finalCanvas.toDataURL('image/png')
       link.click()
     }
   }
