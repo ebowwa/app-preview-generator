@@ -1,3 +1,16 @@
+export interface Screenshot {
+  id: string
+  url: string
+  position: {
+    x: number
+    y: number
+    scale: number
+    rotation: number
+  }
+  opacity: number
+  zIndex: number
+}
+
 export interface ImageAsset {
   id: string
   url: string
@@ -16,7 +29,8 @@ export interface ImageAsset {
 
 export interface Screen {
   id: string
-  screenshot: string | null
+  screenshot: string | null  // Keep for backward compatibility
+  screenshots: Screenshot[]   // New: multiple screenshots
   title: string
   subtitle: string
   description: string

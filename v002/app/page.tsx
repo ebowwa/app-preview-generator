@@ -14,7 +14,7 @@ import {
   Upload, Download, Plus, Image, Type,
   Palette, Move, Save, Grid, RefreshCcw, Layers
 } from "lucide-react"
-import type { Screen, DeviceType, ImageAsset } from '@/types/preview-generator'
+import type { Screen, DeviceType, ImageAsset, Screenshot } from '@/types/preview-generator'
 import { deviceSizes } from '@/types/preview-generator'
 
 export default function Home() {
@@ -47,7 +47,8 @@ export default function Home() {
     secondaryColor: '#7C3AED',
     bgColor: '#F3F4F6',
     layerOrder: 'front',
-    imageAssets: []
+    imageAssets: [],
+    screenshots: []
   }])
 
   const [currentScreen, setCurrentScreen] = useState(0)
@@ -319,10 +320,43 @@ export default function Home() {
       const reader = new FileReader()
       reader.onload = (event) => {
         const result = event.target?.result as string
-        updateScreen({ screenshot: result })
+        const newScreenshot: Screenshot = {
+          id: `screenshot-${Date.now()}`,
+          url: result,
+          position: {
+            x: 0,
+            y: 0,
+            scale: 100,
+            rotation: 0
+          },
+          opacity: 100,
+          zIndex: screen.screenshots.length
+        }
+        updateScreen({
+          screenshots: [...(screen.screenshots || []), newScreenshot],
+          // Also update legacy screenshot field for backward compatibility
+          screenshot: result
+        })
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const removeScreenshot = (screenshotId: string) => {
+    const updatedScreenshots = screen.screenshots.filter(s => s.id !== screenshotId)
+    updateScreen({
+      screenshots: updatedScreenshots,
+      // Clear legacy screenshot if no screenshots left
+      screenshot: updatedScreenshots.length > 0 ? updatedScreenshots[0].url : null
+    })
+  }
+
+  const updateScreenshot = (screenshotId: string, updates: Partial<Screenshot>) => {
+    updateScreen({
+      screenshots: screen.screenshots.map(s =>
+        s.id === screenshotId ? { ...s, ...updates } : s
+      )
+    })
   }
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -381,7 +415,8 @@ export default function Home() {
       secondaryColor: '#7C3AED',
       bgColor: '#F3F4F6',
       layerOrder: 'front',
-      imageAssets: []
+      imageAssets: [],
+      screenshots: []
     }])
     setCurrentScreen(screens.length)
   }
@@ -480,7 +515,8 @@ export default function Home() {
                 overlay: s.overlayOpacity ?? s.opacity?.overlay ?? 90
               },
               layerOrder: s.layerOrder || 'front',
-              imageAssets: s.imageAssets || []
+              imageAssets: s.imageAssets || [],
+              screenshots: s.screenshots || []
             }))
             setScreens(mappedScreens)
           }
@@ -638,8 +674,24 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Screenshot */}
-                      {screen.screenshot ? (
+                      {/* Multiple Screenshots */}
+                      {screen.screenshots && screen.screenshots.length > 0 ? (
+                        screen.screenshots.map((screenshot) => (
+                          <img
+                            key={screenshot.id}
+                            src={screenshot.url}
+                            alt={`Screenshot ${screenshot.id}`}
+                            className="w-full h-full object-cover absolute cursor-move"
+                            style={{
+                              transform: `translate(${screenshot.position.x}%, ${screenshot.position.y}%) scale(${screenshot.position.scale / 100}) rotate(${screenshot.position.rotation}deg)`,
+                              opacity: screenshot.opacity / 100,
+                              zIndex: screenshot.zIndex
+                            }}
+                            onMouseDown={handleMouseDown}
+                          />
+                        ))
+                      ) : screen.screenshot ? (
+                        // Fallback for legacy single screenshot
                         <img
                           src={screen.screenshot}
                           alt="Preview"
@@ -655,7 +707,7 @@ export default function Home() {
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                           <div className="text-center">
                             <Image className="mx-auto mb-2 h-12 w-12" />
-                            <p>Upload a screenshot</p>
+                            <p>Upload screenshots</p>
                           </div>
                         </div>
                       )}
@@ -875,15 +927,15 @@ export default function Home() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <Label>Screenshot</Label>
+                    <div className="space-y-2">
+                      <Label>Screenshots</Label>
                       <Button
                         variant="outline"
                         className="w-full"
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Upload className="h-4 w-4 mr-2" />
-                        Upload Screenshot
+                        Add Screenshot
                       </Button>
                       <input
                         ref={fileInputRef}
@@ -892,6 +944,117 @@ export default function Home() {
                         onChange={handleImageUpload}
                         className="hidden"
                       />
+
+                      {/* List of screenshots */}
+                      {screen.screenshots && screen.screenshots.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                          {screen.screenshots.map((screenshot, index) => (
+                            <div key={screenshot.id} className="p-3 border rounded-lg space-y-2 bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Screenshot {index + 1}</span>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => removeScreenshot(screenshot.id)}
+                                >
+                                  ×
+                                </Button>
+                              </div>
+
+                              {/* Position controls */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-xs w-12">X:</Label>
+                                  <Slider
+                                    min={-50}
+                                    max={50}
+                                    value={[screenshot.position.x]}
+                                    onValueChange={(value) => updateScreenshot(screenshot.id, {
+                                      position: { ...screenshot.position, x: value[0] }
+                                    })}
+                                    className="flex-1"
+                                  />
+                                  <span className="text-xs w-12">{screenshot.position.x}%</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="text-xs w-12">Y:</Label>
+                                  <Slider
+                                    min={-50}
+                                    max={50}
+                                    value={[screenshot.position.y]}
+                                    onValueChange={(value) => updateScreenshot(screenshot.id, {
+                                      position: { ...screenshot.position, y: value[0] }
+                                    })}
+                                    className="flex-1"
+                                  />
+                                  <span className="text-xs w-12">{screenshot.position.y}%</span>
+                                </div>
+                              </div>
+
+                              {/* Scale control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Scale:</Label>
+                                <Slider
+                                  min={50}
+                                  max={200}
+                                  value={[screenshot.position.scale]}
+                                  onValueChange={(value) => updateScreenshot(screenshot.id, {
+                                    position: { ...screenshot.position, scale: value[0] }
+                                  })}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs w-12">{screenshot.position.scale}%</span>
+                              </div>
+
+                              {/* Opacity control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Opacity:</Label>
+                                <Slider
+                                  min={0}
+                                  max={100}
+                                  value={[screenshot.opacity]}
+                                  onValueChange={(value) => updateScreenshot(screenshot.id, {
+                                    opacity: value[0]
+                                  })}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs w-12">{screenshot.opacity}%</span>
+                              </div>
+
+                              {/* Layer control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Layer:</Label>
+                                <Slider
+                                  min={0}
+                                  max={50}
+                                  value={[screenshot.zIndex]}
+                                  onValueChange={(value) => updateScreenshot(screenshot.id, {
+                                    zIndex: value[0]
+                                  })}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs w-12">{screenshot.zIndex}</span>
+                              </div>
+
+                              {/* Rotation control */}
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs w-12">Rotate:</Label>
+                                <Slider
+                                  min={-180}
+                                  max={180}
+                                  value={[screenshot.position.rotation]}
+                                  onValueChange={(value) => updateScreenshot(screenshot.id, {
+                                    position: { ...screenshot.position, rotation: value[0] }
+                                  })}
+                                  className="flex-1"
+                                />
+                                <span className="text-xs w-12">{screenshot.position.rotation}°</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
