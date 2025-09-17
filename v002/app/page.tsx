@@ -1001,17 +1001,16 @@ export default function Home() {
                               {/* Layer control */}
                               <div className="flex items-center gap-2">
                                 <Label className="text-xs w-12">Layer:</Label>
-                                <Input
-                                  type="number"
-                                  value={asset.zIndex}
-                                  onChange={(e) => updateAsset(asset.id, {
-                                    zIndex: Number(e.target.value)
+                                <Slider
+                                  min={0}
+                                  max={100}
+                                  value={[asset.zIndex]}
+                                  onValueChange={(value) => updateAsset(asset.id, {
+                                    zIndex: value[0]
                                   })}
-                                  className="w-16 h-7 text-xs"
-                                  min="0"
-                                  max="100"
+                                  className="flex-1"
                                 />
-                                <span className="text-xs text-gray-500">(Higher = Front)</span>
+                                <span className="text-xs w-12">{asset.zIndex}</span>
                               </div>
 
                               {/* Rotation control */}
