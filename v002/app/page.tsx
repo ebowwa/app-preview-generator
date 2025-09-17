@@ -133,7 +133,41 @@ export default function Home() {
   //   loadSavedProject()
   // }, [])
 
-  // Image Drag handlers
+  // Screenshot Drag handlers (for multiple screenshots)
+  const [screenshotDragState, setScreenshotDragState] = useState<{
+    isDragging: boolean
+    screenshotId: string | null
+    startX: number
+    startY: number
+    initialX: number
+    initialY: number
+  }>({
+    isDragging: false,
+    screenshotId: null,
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0
+  })
+
+  const handleScreenshotMouseDown = (screenshotId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const screenshot = screen.screenshots.find(s => s.id === screenshotId)
+    if (!screenshot) return
+
+    setScreenshotDragState({
+      isDragging: true,
+      screenshotId: screenshotId,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: screenshot.position.x,
+      initialY: screenshot.position.y
+    })
+  }
+
+  // Legacy single screenshot drag handler
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     const currentPos = screens[currentScreen].position || { x: 0, y: 0, scale: 100, rotation: 0 }
@@ -264,6 +298,38 @@ export default function Home() {
     setAssetDragState(prev => ({ ...prev, isDragging: false, assetId: null }))
   }, [])
 
+  const handleScreenshotMouseMove = React.useCallback((e: MouseEvent) => {
+    if (!screenshotDragState.isDragging || !screenshotDragState.screenshotId) return
+
+    const deltaX = (e.clientX - screenshotDragState.startX) / 3
+    const deltaY = (e.clientY - screenshotDragState.startY) / 3
+
+    const newX = screenshotDragState.initialX + deltaX
+    const newY = screenshotDragState.initialY + deltaY
+
+    setScreens(prevScreens => {
+      const newScreens = [...prevScreens]
+      const currentScreenData = newScreens[currentScreen]
+      const screenshot = currentScreenData.screenshots.find(s => s.id === screenshotDragState.screenshotId)
+
+      if (screenshot) {
+        newScreens[currentScreen] = {
+          ...currentScreenData,
+          screenshots: currentScreenData.screenshots.map(s =>
+            s.id === screenshotDragState.screenshotId
+              ? { ...s, position: { ...s.position, x: newX, y: newY } }
+              : s
+          )
+        }
+      }
+      return newScreens
+    })
+  }, [screenshotDragState, currentScreen])
+
+  const handleScreenshotMouseUp = React.useCallback(() => {
+    setScreenshotDragState(prev => ({ ...prev, isDragging: false, screenshotId: null }))
+  }, [])
+
   useEffect(() => {
     if (dragState.isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
@@ -311,6 +377,22 @@ export default function Home() {
       }
     }
   }, [assetDragState.isDragging, handleAssetMouseMove, handleAssetMouseUp])
+
+  useEffect(() => {
+    if (screenshotDragState.isDragging) {
+      document.addEventListener('mousemove', handleScreenshotMouseMove)
+      document.addEventListener('mouseup', handleScreenshotMouseUp)
+      document.body.style.cursor = 'grabbing'
+      document.body.style.userSelect = 'none'
+
+      return () => {
+        document.removeEventListener('mousemove', handleScreenshotMouseMove)
+        document.removeEventListener('mouseup', handleScreenshotMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
+    }
+  }, [screenshotDragState.isDragging, handleScreenshotMouseMove, handleScreenshotMouseUp])
 
   const screen = screens[currentScreen]
 
@@ -687,7 +769,7 @@ export default function Home() {
                               opacity: screenshot.opacity / 100,
                               zIndex: screenshot.zIndex
                             }}
-                            onMouseDown={handleMouseDown}
+                            onMouseDown={(e) => handleScreenshotMouseDown(screenshot.id, e)}
                           />
                         ))
                       ) : screen.screenshot ? (
