@@ -484,37 +484,123 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Screen Selector */}
+            {/* Screen Selector with Thumbnails */}
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>Screens</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2 flex-wrap">
-                  {screens.map((_, index) => (
+                <div className="grid grid-cols-3 gap-4">
+                  {screens.map((screenItem, index) => (
                     <div key={index} className="relative group">
-                      <Button
-                        variant={currentScreen === index ? "default" : "outline"}
+                      <div
+                        className={`border-2 rounded-lg p-2 cursor-pointer transition-all ${
+                          currentScreen === index 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
                         onClick={() => setCurrentScreen(index)}
-                        className="relative"
                       >
-                        Screen {index + 1}
-                      </Button>
+                        {/* Thumbnail Preview */}
+                        <div className="aspect-[9/19.5] bg-gradient-to-br from-gray-100 to-gray-200 rounded-md overflow-hidden relative">
+                          {/* Background */}
+                          <div 
+                            className="absolute inset-0"
+                            style={{
+                              background: screenItem.bgStyle === 'gradient' 
+                                ? `linear-gradient(135deg, ${screenItem.primaryColor} 0%, ${screenItem.secondaryColor} 100%)`
+                                : screenItem.bgStyle === 'pattern' 
+                                ? `${screenItem.bgColor} url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23${screenItem.primaryColor.slice(1)}' fill-opacity='0.1'%3E%3Cpath d='M0 0h20v20H0z'/%3E%3C/g%3E%3C/svg%3E")`
+                                : screenItem.bgColor
+                            }}
+                          />
+                          
+                          {/* Device Frame */}
+                          <div className="absolute inset-2 bg-black rounded-lg p-0.5">
+                            <div className="bg-white rounded-md w-full h-full relative overflow-hidden">
+                              
+                              {/* Screenshot or Placeholder */}
+                              {screenItem.screenshot ? (
+                                <img
+                                  src={screenItem.screenshot}
+                                  alt={`Screen ${index + 1}`}
+                                  className="w-full h-full object-cover absolute"
+                                  style={{
+                                    transform: `translate(${(screenItem.position?.x ?? 0) * 0.3}%, ${(screenItem.position?.y ?? 0) * 0.3}%) scale(${(screenItem.position?.scale ?? 100) / 120}) rotate(${(screenItem.position?.rotation ?? 0) * 0.5}deg)`,
+                                    opacity: (screenItem.opacity?.screenshot ?? 100) / 100
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-gray-400">
+                                  <Image className="h-4 w-4" />
+                                </div>
+                              )}
+                              
+                              {/* Text Overlay (if any) */}
+                              {screenItem.overlayStyle !== 'none' && (screenItem.title || screenItem.subtitle || screenItem.description) && (
+                                <div 
+                                  className={`absolute left-0 right-0 p-1 text-white text-[6px] ${
+                                    screenItem.textPosition === 'top' ? 'top-0' : 
+                                    screenItem.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                                    'bottom-0'
+                                  }`}
+                                  style={{
+                                    background: screenItem.overlayStyle === 'gradient' 
+                                      ? `linear-gradient(to ${screenItem.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
+                                      : screenItem.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
+                                      : screenItem.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
+                                      : 'rgba(0,0,0,0.8)',
+                                    opacity: (screenItem.opacity?.overlay ?? 90) / 100,
+                                    color: screenItem.overlayStyle === 'minimal' ? '#000' : '#fff'
+                                  }}
+                                >
+                                  {screenItem.title && (
+                                    <div className="font-bold truncate">{screenItem.title}</div>
+                                  )}
+                                  {screenItem.subtitle && (
+                                    <div className="truncate">{screenItem.subtitle}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Screen Label */}
+                        <div className="text-center mt-2">
+                          <span className="text-xs font-medium">Screen {index + 1}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Delete Button */}
                       {screens.length > 1 && (
                         <Button
                           size="sm"
                           variant="destructive"
                           className="absolute -top-2 -right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                          onClick={() => removeScreen(index)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeScreen(index)
+                          }}
                         >
                           ×
                         </Button>
                       )}
                     </div>
                   ))}
-                  <Button onClick={addScreen} variant="outline">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  
+                  {/* Add Screen Button */}
+                  <div 
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-2 cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={addScreen}
+                  >
+                    <div className="aspect-[9/19.5] flex items-center justify-center">
+                      <Plus className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div className="text-center mt-2">
+                      <span className="text-xs text-gray-500">Add Screen</span>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
