@@ -743,10 +743,29 @@ export default function Home() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Type className="h-5 w-5" />
-                      Text Overlay
+                      Content
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div>
+                      <Label>Screenshot</Label>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Screenshot
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </div>
+
                     <div>
                       <Label htmlFor="title">Title</Label>
                       <Input
@@ -997,21 +1016,6 @@ export default function Home() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Screenshot
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
 
                     <div className="grid grid-cols-2 gap-2">
                       <Button onClick={resetPosition} variant="outline" size="sm">
