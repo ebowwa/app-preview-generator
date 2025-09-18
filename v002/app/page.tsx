@@ -12,12 +12,34 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Upload, Download, Plus, Image, Type,
-  Palette, Move, Save, Grid, RefreshCcw, Layers
+  Palette, Move, Save, Grid, RefreshCcw, Cloud, Share2, FolderOpen
 } from "lucide-react"
 import type { Screen, DeviceType, ImageAsset, Screenshot } from '@/types/preview-generator'
 import { deviceSizes } from '@/types/preview-generator'
+import { validateScreenshot, formatValidationErrors } from '@/utils/screenshot-validation'
+import { useToast } from '@/components/ui/toast'
+import {
+  createProject,
+  updateProject,
+  getProjectByShareId,
+  saveProjectLocally,
+  getLocalProjects,
+  logActivity
+} from '@/lib/supabase-operations'
+import { useAuth } from '@/lib/auth-context'
+import { UserMenu } from '@/components/auth/user-menu'
+import { AuthForm } from '@/components/auth/auth-form'
+import { DevicePreview } from '@/components/device-preview'
+import { exportPreviewAsImage } from '@/lib/export-helper'
 
 export default function Home() {
+  const { toast } = useToast()
+  const { user, loading: authLoading } = useAuth()
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [projectName, setProjectName] = useState('Untitled Project')
+  const [currentProjectShareId, setCurrentProjectShareId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [screens, setScreens] = useState<Screen[]>([{
     id: '1',
     screenshot: null,
@@ -87,6 +109,47 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const assetInputRef = useRef<HTMLInputElement>(null)
   const presetInputRef = useRef<HTMLInputElement>(null)
+
+  // Check URL for project share ID on mount
+  useEffect(() => {
+    const checkUrlForProject = async () => {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const shareId = urlParams.get('project')
+
+        if (shareId) {
+          try {
+            const project = await getProjectByShareId(shareId)
+            if (project) {
+              setScreens(project.screens)
+              setDeviceType(project.device_type as DeviceType)
+              setProjectName(project.name)
+              setCurrentProjectShareId(project.share_id || null)
+              setLastSaved(project.updated_at ? new Date(project.updated_at) : null)
+              saveProjectLocally(shareId)
+
+              toast({
+                title: 'Project Loaded',
+                description: `Loaded project: ${project.name}`,
+                variant: 'success',
+                duration: 3000
+              })
+            }
+          } catch (error) {
+            console.error('Error loading project:', error)
+            toast({
+              title: 'Error Loading Project',
+              description: 'Could not load the requested project.',
+              variant: 'destructive',
+              duration: 5000
+            })
+          }
+        }
+      }
+    }
+
+    checkUrlForProject()
+  }, [])
 
   // Auto-load saved project on mount (disabled by default)
   // Uncomment and update the URL to enable auto-loading
@@ -396,9 +459,38 @@ export default function Home() {
 
   const screen = screens[currentScreen]
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Validate the screenshot
+      const validation = await validateScreenshot(file, deviceType)
+
+      if (!validation.isValid) {
+        // Show error toast
+        toast({
+          title: 'Screenshot Validation Failed',
+          description: formatValidationErrors(validation.errors),
+          variant: 'destructive',
+          duration: 6000
+        })
+        // Reset the input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        return
+      }
+
+      // Show warnings if any
+      if (validation.warnings && validation.warnings.length > 0) {
+        toast({
+          title: 'Screenshot Upload Warning',
+          description: validation.warnings.join('\n'),
+          variant: 'warning',
+          duration: 5000
+        })
+      }
+
+      // Proceed with upload if valid
       const reader = new FileReader()
       reader.onload = (event) => {
         const result = event.target?.result as string
@@ -419,8 +511,20 @@ export default function Home() {
           // Also update legacy screenshot field for backward compatibility
           screenshot: result
         })
+
+        // Show success toast
+        toast({
+          title: 'Screenshot Added',
+          description: 'Screenshot uploaded successfully.',
+          variant: 'success',
+          duration: 3000
+        })
       }
       reader.readAsDataURL(file)
+    }
+    // Reset input for next upload
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -441,9 +545,28 @@ export default function Home() {
     })
   }
 
-  const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Validate the asset (using same validation as screenshots)
+      const validation = await validateScreenshot(file, deviceType)
+
+      if (!validation.isValid) {
+        // Show error toast
+        toast({
+          title: 'Image Asset Validation Failed',
+          description: formatValidationErrors(validation.errors),
+          variant: 'destructive',
+          duration: 6000
+        })
+        // Reset the input
+        if (assetInputRef.current) {
+          assetInputRef.current.value = ''
+        }
+        return
+      }
+
+      // Proceed with upload if valid
       const reader = new FileReader()
       reader.onload = (event) => {
         const result = event.target?.result as string
@@ -459,8 +582,20 @@ export default function Home() {
         updateScreen({
           imageAssets: [...(screen.imageAssets || []), newAsset]
         })
+
+        // Show success toast
+        toast({
+          title: 'Image Asset Added',
+          description: 'Image asset uploaded successfully.',
+          variant: 'success',
+          duration: 3000
+        })
       }
       reader.readAsDataURL(file)
+    }
+    // Reset input for next upload
+    if (assetInputRef.current) {
+      assetInputRef.current.value = ''
     }
   }
 
@@ -514,54 +649,91 @@ export default function Home() {
   }
 
   const exportCurrentPreview = async () => {
-    const element = document.getElementById('device-mockup')
-    if (element) {
-      const deviceSize = deviceSizes[deviceType]
-      const targetWidth = deviceSize.width
-      const targetHeight = deviceSize.height
-
-      // Calculate scale to achieve target dimensions
-      const rect = element.getBoundingClientRect()
-      const scaleX = targetWidth / rect.width
-      const scaleY = targetHeight / rect.height
-      const scale = Math.max(scaleX, scaleY) // Use max to ensure we cover the full target size
-
-      const canvas = await html2canvas(element, {
-        backgroundColor: null,
-        scale: scale,
-        useCORS: true,
-      })
-
-      // Create a new canvas with exact App Store dimensions
-      const finalCanvas = document.createElement('canvas')
-      finalCanvas.width = targetWidth
-      finalCanvas.height = targetHeight
-      const ctx = finalCanvas.getContext('2d')
-
-      if (ctx) {
-        // Fill with white background to remove alpha channel
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 0, targetWidth, targetHeight)
-
-        // Center the captured image on the final canvas
-        const offsetX = (targetWidth - canvas.width) / 2
-        const offsetY = (targetHeight - canvas.height) / 2
-        ctx.drawImage(canvas, offsetX, offsetY)
-      }
-
-      // Export as JPEG to ensure no alpha channel (App Store requirement)
-      const link = document.createElement('a')
-      link.download = `app-preview-${deviceSize.name.replace(/[^a-zA-Z0-9]/g, '-')}-${currentScreen + 1}.jpg`
-      link.href = finalCanvas.toDataURL('image/jpeg', 1.0)
-      link.click()
-    }
+    await exportPreviewAsImage(screens[currentScreen], deviceType, currentScreen)
   }
 
   const exportAllPreviews = async () => {
     for (let i = 0; i < screens.length; i++) {
-      setCurrentScreen(i)
+      await exportPreviewAsImage(screens[i], deviceType, i)
       await new Promise(resolve => setTimeout(resolve, 500))
-      await exportCurrentPreview()
+    }
+  }
+
+  const saveProjectToCloud = async () => {
+    setIsSaving(true)
+    try {
+      if (currentProjectShareId) {
+        // Update existing project
+        await updateProject(currentProjectShareId, {
+          name: projectName,
+          screens,
+          deviceType
+        })
+        toast({
+          title: 'Project Updated',
+          description: 'Your project has been saved to the cloud.',
+          variant: 'success',
+          duration: 3000
+        })
+      } else {
+        // Create new project
+        const project = await createProject({
+          name: projectName,
+          screens,
+          deviceType,
+          userId: user?.id,
+          visibility: user ? 'private' : 'unlisted'
+        })
+
+        // Log activity
+        if (user) {
+          await logActivity('project_created', project.id, { name: projectName })
+        }
+        setCurrentProjectShareId(project.share_id)
+        saveProjectLocally(project.share_id)
+
+        // Update URL with share ID
+        const newUrl = `${window.location.pathname}?project=${project.share_id}`
+        window.history.pushState({}, '', newUrl)
+
+        toast({
+          title: 'Project Saved',
+          description: `Share this link: ${window.location.origin}${newUrl}`,
+          variant: 'success',
+          duration: 5000
+        })
+      }
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Error saving to cloud:', error)
+      toast({
+        title: 'Save Failed',
+        description: 'Could not save project to cloud. Check your connection.',
+        variant: 'destructive',
+        duration: 5000
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const shareProject = () => {
+    if (currentProjectShareId) {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?project=${currentProjectShareId}`
+      navigator.clipboard.writeText(shareUrl)
+      toast({
+        title: 'Link Copied!',
+        description: 'Project link copied to clipboard.',
+        variant: 'success',
+        duration: 3000
+      })
+    } else {
+      toast({
+        title: 'Save Project First',
+        description: 'Save your project to cloud before sharing.',
+        variant: 'warning',
+        duration: 3000
+      })
     }
   }
 
@@ -643,39 +815,51 @@ export default function Home() {
     })
   }
 
-  const getDeviceTransform = () => {
-    switch (screen.devicePosition) {
-      case 'left': return 'translateX(-20px) rotateY(25deg)'
-      case 'right': return 'translateX(20px) rotateY(-25deg)'
-      case 'angled-left': return 'rotateY(35deg) rotateX(5deg)'
-      case 'angled-right': return 'rotateY(-35deg) rotateX(5deg)'
-      default: return 'none'
-    }
-  }
 
-  const getBackgroundStyle = (screenData: Screen) => {
-    if (screenData.bgStyle === 'gradient') {
-      return {
-        background: `linear-gradient(135deg, ${screenData.primaryColor || '#4F46E5'} 0%, ${screenData.secondaryColor || '#7C3AED'} 100%)`
-      }
-    } else if (screenData.bgStyle === 'pattern') {
-      // Use primaryColor for the pattern itself, bgColor for background
-      const patternColor = (screenData.primaryColor || '#4F46E5').replace('#', '%23')
-      return {
-        backgroundColor: screenData.bgColor || '#F3F4F6',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${patternColor}' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-      }
+  // Show auth modal for protected features
+  const handleAuthRequired = () => {
+    if (!user) {
+      setShowAuthModal(true)
+      toast({
+        title: 'Sign In Required',
+        description: 'Sign in to save projects to the cloud',
+        variant: 'warning'
+      })
+      return false
     }
-    return { backgroundColor: screenData.bgColor || '#F3F4F6' }
+    return true
   }
-
 
   return (
     <div className="min-h-screen bg-background p-4">
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="relative">
+            <Button
+              onClick={() => setShowAuthModal(false)}
+              variant="ghost"
+              size="sm"
+              className="absolute -top-2 -right-2 z-10"
+            >
+              ×
+            </Button>
+            <AuthForm onSuccess={() => setShowAuthModal(false)} />
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         <div className="mb-4 flex justify-between items-center">
           <h1 className="text-3xl font-bold">App Preview Generator</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-4 items-center">
+            {user ? (
+              <UserMenu />
+            ) : (
+              <Button onClick={() => setShowAuthModal(true)} variant="default" size="sm">
+                Sign In
+              </Button>
+            )}
             <Button onClick={() => setShowGrid(!showGrid)} variant="outline" size="sm">
               <Grid className="h-4 w-4 mr-2" />
               {showGrid ? 'Hide' : 'Show'} Grid
@@ -701,175 +885,16 @@ export default function Home() {
                   )}
                   
                   {/* Device Preview */}
-                  <div
-                    id="device-mockup"
-                    className="bg-black rounded-[3rem] p-2 shadow-2xl transition-transform duration-300"
-                    style={{
-                      transform: getDeviceTransform(),
-                      perspective: '1000px',
-                      width: '300px',
-                      height: '650px'
-                    }}
-                  >
-                    <div
-                      className="w-full h-full relative overflow-hidden rounded-[2.5rem]"
-                      style={getBackgroundStyle(screen)}
-                    >
-                      {/* Static Overlay Background (front layer) */}
-                      {(screen.layerOrder === 'front') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
-                        <div
-                          className={`absolute left-0 right-0 z-5 pointer-events-none ${
-                            screen.textPosition === 'top' ? 'top-0' :
-                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
-                            'bottom-0'
-                          }`}
-                          style={{
-                            padding: '6px',
-                            background: screen.overlayStyle === 'gradient'
-                              ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
-                              : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
-                              : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
-                              : 'rgba(0,0,0,0.8)',
-                            opacity: (screen.opacity?.overlay ?? 90) / 100,
-                            height: screen.textPosition === 'center' ? '120px' : '80px'
-                          }}
-                        />
-                      )}
-
-                      {/* Draggable Text Content (front layer) */}
-                      {(screen.layerOrder === 'front') && (screen.title || screen.subtitle || screen.description) && (
-                        <div
-                          className={`absolute left-0 right-0 text-white z-10 cursor-move ${
-                            screen.textPosition === 'top' ? 'top-0' :
-                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
-                            'bottom-0'
-                          }`}
-                          style={{
-                            padding: '6px',
-                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff',
-                            transform: `translate(${(screen.textOverlayPosition?.x ?? 0)}px, ${(screen.textOverlayPosition?.y ?? 0)}px)`
-                          }}
-                          onMouseDown={handleTextMouseDown}
-                        >
-                          {screen.title && (
-                            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{screen.title}</h2>
-                          )}
-                          {screen.subtitle && (
-                            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>{screen.subtitle}</p>
-                          )}
-                          {screen.description && (
-                            <p style={{ fontSize: '12px', opacity: 0.8, margin: '8px 0 0 0' }}>{screen.description}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Multiple Screenshots */}
-                      {screen.screenshots && screen.screenshots.length > 0 ? (
-                        screen.screenshots.map((screenshot) => (
-                          <img
-                            key={screenshot.id}
-                            src={screenshot.url}
-                            alt={`Screenshot ${screenshot.id}`}
-                            className="w-full h-full object-cover absolute cursor-move"
-                            style={{
-                              transform: `translate(${screenshot.position.x}%, ${screenshot.position.y}%) scale(${screenshot.position.scale / 100}) rotate(${screenshot.position.rotation}deg)`,
-                              opacity: screenshot.opacity / 100,
-                              zIndex: screenshot.zIndex
-                            }}
-                            onMouseDown={(e) => handleScreenshotMouseDown(screenshot.id, e)}
-                          />
-                        ))
-                      ) : screen.screenshot ? (
-                        // Fallback for legacy single screenshot
-                        <img
-                          src={screen.screenshot}
-                          alt="Preview"
-                          className="w-full h-full object-cover absolute cursor-move"
-                          style={{
-                            transform: `translate(${(screen.position?.x ?? 0)}%, ${(screen.position?.y ?? 0)}%) scale(${(screen.position?.scale ?? 100) / 100}) rotate(${screen.position?.rotation ?? 0}deg)`,
-                            opacity: (screen.opacity?.screenshot ?? 100) / 100,
-                            zIndex: (screen.layerOrder === 'front') ? 20 : 0
-                          }}
-                          onMouseDown={handleMouseDown}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                          <div className="text-center">
-                            <Image className="mx-auto mb-2 h-12 w-12" />
-                            <p>Upload screenshots</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Additional Image Assets */}
-                      {screen.imageAssets && screen.imageAssets.map((asset) => (
-                        <img
-                          key={asset.id}
-                          src={asset.url}
-                          alt={`Asset ${asset.id}`}
-                          className="absolute cursor-move"
-                          style={{
-                            left: `${asset.position.x}px`,
-                            top: `${asset.position.y}px`,
-                            width: `${asset.size.width}px`,
-                            height: `${asset.size.height}px`,
-                            transform: `rotate(${asset.rotation}deg)`,
-                            opacity: asset.opacity / 100,
-                            zIndex: asset.zIndex
-                          }}
-                          onMouseDown={(e) => handleAssetMouseDown(asset.id, e)}
-                        />
-                      ))}
-
-                      {/* Static Overlay Background (back layer) */}
-                      {(screen.layerOrder === 'back') && screen.overlayStyle !== 'none' && (screen.title || screen.subtitle || screen.description) && (
-                        <div
-                          className={`absolute left-0 right-0 z-25 pointer-events-none ${
-                            screen.textPosition === 'top' ? 'top-0' :
-                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
-                            'bottom-0'
-                          }`}
-                          style={{
-                            padding: '6px',
-                            background: screen.overlayStyle === 'gradient'
-                              ? `linear-gradient(to ${screen.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
-                              : screen.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
-                              : screen.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
-                              : 'rgba(0,0,0,0.8)',
-                            opacity: (screen.opacity?.overlay ?? 90) / 100,
-                            height: screen.textPosition === 'center' ? '120px' : '80px'
-                          }}
-                        />
-                      )}
-
-                      {/* Draggable Text Content (back layer) */}
-                      {(screen.layerOrder === 'back') && (screen.title || screen.subtitle || screen.description) && (
-                        <div
-                          className={`absolute left-0 right-0 text-white z-30 cursor-move ${
-                            screen.textPosition === 'top' ? 'top-0' :
-                            screen.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
-                            'bottom-0'
-                          }`}
-                          style={{
-                            padding: '6px',
-                            color: screen.overlayStyle === 'minimal' ? '#000' : '#fff',
-                            transform: `translate(${(screen.textOverlayPosition?.x ?? 0)}px, ${(screen.textOverlayPosition?.y ?? 0)}px)`
-                          }}
-                          onMouseDown={handleTextMouseDown}
-                        >
-                          {screen.title && (
-                            <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{screen.title}</h2>
-                          )}
-                          {screen.subtitle && (
-                            <p style={{ fontSize: '14px', opacity: 0.9, margin: '4px 0 0 0' }}>{screen.subtitle}</p>
-                          )}
-                          {screen.description && (
-                            <p style={{ fontSize: '12px', opacity: 0.8, margin: '8px 0 0 0' }}>{screen.description}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <DevicePreview
+                    screen={screen}
+                    width={300}
+                    height={650}
+                    showDeviceFrame={true}
+                    onScreenshotMouseDown={handleScreenshotMouseDown}
+                    onTextMouseDown={handleTextMouseDown}
+                    onAssetMouseDown={handleAssetMouseDown}
+                    onLegacyMouseDown={handleMouseDown}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -893,67 +918,13 @@ export default function Home() {
                       >
                         {/* Thumbnail Preview */}
                         <div className="flex items-center justify-center">
-                          {/* Thumbnail Device Preview */}
-                          <div
-                            className="bg-black rounded-lg p-0.5 shadow-lg"
-                            style={{
-                              width: '60px',
-                              height: '130px'
-                            }}
-                          >
-                            <div
-                              className="w-full h-full relative overflow-hidden rounded-md"
-                              style={getBackgroundStyle(screenItem)}
-                            >
-                              {/* Thumbnail Overlay */}
-                              {screenItem.overlayStyle !== 'none' && (screenItem.title || screenItem.subtitle || screenItem.description) && (
-                                <div
-                                  className={`absolute left-0 right-0 text-white z-10 ${
-                                    screenItem.textPosition === 'top' ? 'top-0' :
-                                    screenItem.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' :
-                                    'bottom-0'
-                                  }`}
-                                  style={{
-                                    padding: '1px',
-                                    background: screenItem.overlayStyle === 'gradient'
-                                      ? `linear-gradient(to ${screenItem.textPosition === 'top' ? 'bottom' : 'top'}, rgba(0,0,0,0.8), transparent)`
-                                      : screenItem.overlayStyle === 'minimal' ? 'rgba(255,255,255,0.9)'
-                                      : screenItem.overlayStyle === 'bold' ? 'rgba(0,0,0,0.95)'
-                                      : 'rgba(0,0,0,0.8)',
-                                    opacity: (screenItem.opacity?.overlay ?? 90) / 100,
-                                    color: screenItem.overlayStyle === 'minimal' ? '#000' : '#fff'
-                                  }}
-                                >
-                                  {screenItem.title && (
-                                    <div style={{ fontSize: '4px', fontWeight: 'bold', lineHeight: '5px' }}>{screenItem.title}</div>
-                                  )}
-                                  {screenItem.subtitle && (
-                                    <div style={{ fontSize: '3px', opacity: 0.9, lineHeight: '4px' }}>{screenItem.subtitle}</div>
-                                  )}
-                                  {screenItem.description && (
-                                    <div style={{ fontSize: '2px', opacity: 0.8, lineHeight: '3px' }}>{screenItem.description}</div>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Thumbnail Screenshot */}
-                              {screenItem.screenshot ? (
-                                <img
-                                  src={screenItem.screenshot}
-                                  alt="Thumbnail"
-                                  className="w-full h-full object-cover absolute"
-                                  style={{
-                                    transform: `translate(${(screenItem.position?.x ?? 0)}%, ${(screenItem.position?.y ?? 0)}%) scale(${(screenItem.position?.scale ?? 100) / 100}) rotate(${screenItem.position?.rotation ?? 0}deg)`,
-                                    opacity: (screenItem.opacity?.screenshot ?? 100) / 100,
-                                    zIndex: (screenItem.layerOrder === 'front') ? 20 : 0
-                                  }}
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                  <Image style={{ width: '12px', height: '12px' }} />
-                                </div>
-                              )}
-                            </div>
+                          <div className="bg-black rounded-lg p-0.5 shadow-lg" style={{ width: '60px', height: '130px' }}>
+                            <DevicePreview
+                              screen={screenItem}
+                              showDeviceFrame={false}
+                              scale={0.2}
+                              className="rounded-md"
+                            />
                           </div>
                         </div>
                         
@@ -1029,7 +1000,7 @@ export default function Home() {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png"
                         onChange={handleImageUpload}
                         className="hidden"
                       />
@@ -1159,7 +1130,7 @@ export default function Home() {
                       <input
                         ref={assetInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png"
                         onChange={handleAssetUpload}
                         className="hidden"
                       />
@@ -1711,6 +1682,51 @@ export default function Home() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Cloud Save Section */}
+                    <div className="space-y-2 pb-4 border-b">
+                      <Label>Project Name</Label>
+                      <Input
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        placeholder="Enter project name"
+                      />
+
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <Button
+                          onClick={() => {
+                            if (!user && !handleAuthRequired()) return
+                            saveProjectToCloud()
+                          }}
+                          disabled={isSaving}
+                          className="w-full"
+                        >
+                          <Cloud className="h-4 w-4 mr-2" />
+                          {isSaving ? 'Saving...' : currentProjectShareId ? 'Update Cloud' : 'Save to Cloud'}
+                        </Button>
+                        <Button
+                          onClick={shareProject}
+                          variant="outline"
+                          disabled={!currentProjectShareId}
+                          className="w-full"
+                        >
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share Link
+                        </Button>
+                      </div>
+
+                      {lastSaved && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Last saved: {lastSaved.toLocaleString()}
+                        </p>
+                      )}
+
+                      {currentProjectShareId && (
+                        <p className="text-xs text-muted-foreground">
+                          Share ID: {currentProjectShareId}
+                        </p>
+                      )}
+                    </div>
+
                     <div>
                       <Label>Device Type (App Store Format)</Label>
                       <RadioGroup
