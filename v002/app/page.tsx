@@ -1000,7 +1000,7 @@ export default function Home() {
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/jpeg,image/jpg,image/png"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
                         onChange={handleImageUpload}
                         className="hidden"
                       />
@@ -1130,7 +1130,7 @@ export default function Home() {
                       <input
                         ref={assetInputRef}
                         type="file"
-                        accept="image/jpeg,image/jpg,image/png"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
                         onChange={handleAssetUpload}
                         className="hidden"
                       />

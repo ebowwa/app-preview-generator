@@ -47,7 +47,7 @@ export async function createProject(data: {
   const { data: { user } } = await supabase!.auth.getUser()
 
   const { data: project, error } = await supabase!
-    .from('projects')
+    .from('app_projects')
     .insert([
       {
         name: data.name,
@@ -75,7 +75,7 @@ export async function getProjectByShareId(shareId: string) {
   }
 
   const { data: project, error } = await supabase!
-    .from('projects')
+    .from('app_projects')
     .select('*')
     .eq('share_id', shareId)
     .single()
@@ -104,7 +104,7 @@ export async function updateProject(shareId: string, data: {
   if (data.deviceType) updateData.device_type = data.deviceType
 
   const { data: project, error } = await supabase!
-    .from('projects')
+    .from('app_projects')
     .update(updateData)
     .eq('share_id', shareId)
     .select()
@@ -125,7 +125,7 @@ export async function deleteProject(shareId: string) {
   }
 
   const { error } = await supabase!
-    .from('projects')
+    .from('app_projects')
     .delete()
     .eq('share_id', shareId)
 
@@ -144,7 +144,7 @@ export async function listUserProjects(userId: string, limit: number = 50) {
   }
 
   const { data: projects, error } = await supabase!
-    .from('projects')
+    .from('app_projects')
     .select('*')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
@@ -165,7 +165,7 @@ export async function listPublicProjects(limit: number = 10) {
   }
 
   const { data: projects, error } = await supabase!
-    .from('projects')
+    .from('app_projects')
     .select('id, name, share_id, created_at, updated_at, user_id')
     .eq('visibility', 'public')
     .order('created_at', { ascending: false })
@@ -208,7 +208,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   if (!isSupabaseConfigured()) return null
 
   const { data, error } = await supabase!
-    .from('profiles')
+    .from('app_profiles')
     .select('*')
     .eq('id', userId)
     .single()
@@ -227,7 +227,7 @@ export async function updateUserProfile(userId: string, updates: Partial<UserPro
   }
 
   const { data, error } = await supabase!
-    .from('profiles')
+    .from('app_profiles')
     .update(updates)
     .eq('id', userId)
     .select()
@@ -246,7 +246,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
   if (!isSupabaseConfigured()) return null
 
   const { data, error } = await supabase!
-    .from('user_preferences')
+    .from('app_user_preferences')
     .select('*')
     .eq('user_id', userId)
     .single()
@@ -265,7 +265,7 @@ export async function updateUserPreferences(userId: string, updates: Partial<Use
   }
 
   const { data, error } = await supabase!
-    .from('user_preferences')
+    .from('app_user_preferences')
     .upsert({
       user_id: userId,
       ...updates
@@ -289,7 +289,7 @@ export async function shareProject(projectId: string, email: string, permission:
 
   // First get the user by email
   const { data: userData, error: userError } = await supabase!
-    .from('profiles')
+    .from('app_profiles')
     .select('id')
     .eq('email', email)
     .single()
@@ -299,7 +299,7 @@ export async function shareProject(projectId: string, email: string, permission:
   }
 
   const { data, error } = await supabase!
-    .from('project_shares')
+    .from('app_project_shares')
     .insert({
       project_id: projectId,
       shared_with_user_id: userData.id,
@@ -320,7 +320,7 @@ export async function getSharedProjects(userId: string) {
   if (!isSupabaseConfigured()) return []
 
   const { data, error } = await supabase!
-    .from('project_shares')
+    .from('app_project_shares')
     .select(`
       *,
       projects (*)
@@ -344,7 +344,7 @@ export async function logActivity(action: string, projectId?: string, metadata?:
   if (!user) return
 
   const { error } = await supabase!
-    .from('activity_log')
+    .from('app_activity_log')
     .insert({
       user_id: user.id,
       project_id: projectId,
@@ -361,7 +361,7 @@ export async function getUserActivity(userId: string, limit: number = 20) {
   if (!isSupabaseConfigured()) return []
 
   const { data, error } = await supabase!
-    .from('activity_log')
+    .from('app_activity_log')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })

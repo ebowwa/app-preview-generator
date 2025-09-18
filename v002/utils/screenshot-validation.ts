@@ -17,8 +17,8 @@ export interface ValidationResult {
   warnings?: string[]
 }
 
-const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png']
-const MAX_FILE_SIZE_MB = 10
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+const MAX_FILE_SIZE_MB = 50  // Increased to 50MB
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 export function validateFileType(file: File): ValidationError | null {
@@ -26,10 +26,10 @@ export function validateFileType(file: File): ValidationError | null {
     const extension = file.name.split('.').pop()?.toLowerCase() || 'unknown'
     return {
       type: 'file_type',
-      message: `Invalid file type. Only JPG and PNG files are allowed.`,
+      message: `Invalid file type. Supported formats: JPG, PNG, GIF, WebP, SVG.`,
       details: {
         actual: extension.toUpperCase(),
-        expected: ['JPG', 'PNG']
+        expected: ['JPG', 'PNG', 'GIF', 'WEBP', 'SVG']
       }
     }
   }
@@ -62,14 +62,15 @@ export async function validateImageDimensions(
       URL.revokeObjectURL(url)
 
       const device = deviceSizes[deviceType]
-      const minWidth = Math.min(...Object.values(deviceSizes).map(d => d.width))
-      const minHeight = Math.min(...Object.values(deviceSizes).map(d => d.height))
+      // Relaxed minimum dimensions - just require reasonable size
+      const minWidth = 200  // Much more lenient minimum
+      const minHeight = 200 // Much more lenient minimum
 
-      // Check if image meets minimum App Store requirements
+      // Check if image meets minimum requirements
       if (img.width < minWidth || img.height < minHeight) {
         resolve({
           type: 'dimensions',
-          message: `Screenshot dimensions are too small for App Store requirements.`,
+          message: `Image dimensions are too small.`,
           details: {
             actual: `${img.width}×${img.height}`,
             expected: `At least ${minWidth}×${minHeight}`,
@@ -122,7 +123,7 @@ export async function validateScreenshot(
     }
   }
 
-  // Add warnings for optimal dimensions
+  // Add warnings for optimal dimensions (optional, not blocking)
   const device = deviceSizes[deviceType]
   const img = new Image()
   const url = URL.createObjectURL(file)
@@ -131,21 +132,10 @@ export async function validateScreenshot(
     img.onload = () => {
       URL.revokeObjectURL(url)
 
-      // Warning if not exact App Store dimensions
-      if (img.width !== device.width || img.height !== device.height) {
+      // Only warn if image is much smaller than App Store dimensions
+      if (img.width < device.width * 0.5 || img.height < device.height * 0.5) {
         warnings.push(
-          `For optimal results, use exact dimensions: ${device.width}×${device.height}px for ${device.name}`
-        )
-      }
-
-      // Warning if aspect ratio doesn't match
-      const expectedRatio = device.width / device.height
-      const actualRatio = img.width / img.height
-      const ratioDiff = Math.abs(expectedRatio - actualRatio)
-
-      if (ratioDiff > 0.01) {
-        warnings.push(
-          `Image aspect ratio doesn't match device. This may result in cropping or distortion.`
+          `For App Store screenshots, consider using dimensions closer to: ${device.width}×${device.height}px`
         )
       }
 
