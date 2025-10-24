@@ -13,11 +13,11 @@ import {
   Upload, Download, Plus, Image, Type,
   Palette, Move, Save, Grid, RefreshCcw, Layers
 } from "lucide-react"
-import type { Screen, DeviceType, ImageAsset, Screenshot } from '@/types/preview-generator'
-import { getDeviceTransform } from '@/utils/deviceTransforms'
-import { getBackgroundStyle } from '@/utils/backgroundStyles'
-import { getResetPosition, getFitToFramePosition, getFillFramePosition, getCenterPosition } from '@/utils/positioning'
-import { mapLegacyScreenData, parseProjectData, serializeProjectData } from '@/utils/projectMapping'
+import type { Screen, DeviceType, ImageAsset, Screenshot } from '../../shared/types/preview-generator'
+import { getDeviceTransform } from '../../shared/utils/deviceTransforms'
+import { getBackgroundStyle } from '../../shared/utils/backgroundStyles'
+import { getResetPosition, getFitToFramePosition, getFillFramePosition, getCenterPosition } from '../../shared/utils/positioning'
+import { mapLegacyScreenData, parseProjectData, serializeProjectData } from '../../shared/utils/projectMapping'
 import { readFileAsDataURL, readFileAsText, downloadData, generateTimestampFilename } from '@/utils/fileHelpers'
 import { getExportDimensions, generateExportFilename, exportElementToCanvas, canvasToJpegDataUrl } from '@/utils/export'
 
