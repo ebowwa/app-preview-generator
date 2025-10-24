@@ -1,0 +1,20 @@
+{
+  "project": {
+    "name": "CLI Test App",
+    "device": "iPhone 6.7\"",
+    "defaultStyle": "gradient",
+    "defaultPosition": "top"
+  },
+  "screens": [
+    {
+      "screenshot": "test-screenshot.png",
+      "title": "CLI Test App",
+      "outputName": "screen-1.jpg"
+    }
+  ],
+  "output": {
+    "directory": "./previews",
+    "format": "jpg",
+    "quality": 90
+  }
+}

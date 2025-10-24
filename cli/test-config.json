@@ -1,0 +1,31 @@
+{
+  "project": {
+    "name": "Test App",
+    "device": "iphone-67",
+    "defaultStyle": "gradient",
+    "defaultPosition": "top"
+  },
+  "screens": [
+    {
+      "screenshot": "./test-screenshot.png",
+      "title": "Main Screen",
+      "subtitle": "Welcome to our app",
+      "description": "Get started with amazing features",
+      "style": "gradient",
+      "outputName": "screen-1.jpg"
+    },
+    {
+      "screenshot": "./test-screenshot.png",
+      "title": "Features",
+      "subtitle": "Powerful tools",
+      "description": "Everything you need",
+      "style": "bold",
+      "outputName": "screen-2.jpg"
+    }
+  ],
+  "output": {
+    "directory": "./batch-output",
+    "format": "jpg",
+    "quality": 90
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "app-preview-generator-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for generating App Store screenshots with device frames",
+  "main": "src/index.js",
+  "bin": {
+    "app-preview-gen": "./bin/app-preview-gen.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node bin/app-preview-gen.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "app-store",
+    "screenshots",
+    "preview",
+    "generator",
+    "cli"
+  ],
+  "author": "CLI Extension",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "glob": "^11.0.3",
+    "inquirer": "^9.2.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^20.19.23",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
